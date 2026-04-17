@@ -44,8 +44,40 @@ body {
   animation-delay: 150ms;
 }
 
+@keyframes motion-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes motion-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.motion-slide-in-right {
+  animation: motion-slide-in-right 0.28s ease-out both;
+}
+
+.motion-slide-in-left {
+  animation: motion-slide-in-left 0.28s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .motion-fade-up {
+  .motion-fade-up,
+  .motion-slide-in-right,
+  .motion-slide-in-left {
     animation: none;
   }
 }

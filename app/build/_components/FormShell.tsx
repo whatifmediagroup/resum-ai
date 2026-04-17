@@ -1,8 +1,16 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useResume } from "@/lib/resumeContext";
 import { steps, findStep } from "./steps";
+
+type StepDirection = "forward" | "back" | "initial";
+
+function animationClass(dir: StepDirection): string {
+  if (dir === "forward") return "motion-slide-in-right";
+  if (dir === "back") return "motion-slide-in-left";
+  return "motion-fade-up";
+}
 
 function describeError(status: number): string {
   if (status === 400) return "Some answers need fixing — go back and check your entries.";
@@ -29,6 +37,17 @@ export function FormShell({ currentId }: { currentId: string }) {
   useEffect(() => {
     if (stepId) setVisited((v) => (v[stepId] ? v : { ...v, [stepId]: true }));
   }, [stepId]);
+
+  const prevIndexRef = useRef<number | null>(null);
+  let direction: StepDirection = "initial";
+  if (here) {
+    const prev = prevIndexRef.current;
+    if (prev !== null && here.index > prev) direction = "forward";
+    else if (prev !== null && here.index < prev) direction = "back";
+  }
+  useEffect(() => {
+    if (here) prevIndexRef.current = here.index;
+  }, [here]);
 
   const currentTouched = stepId ? touchedByStep[stepId] ?? {} : {};
   const markTouched = (field: string) => {
@@ -112,8 +131,10 @@ export function FormShell({ currentId }: { currentId: string }) {
           if (i < index || visited[steps[i].id]) goTo(i);
         }}
       />
-      <h2 className="text-xl font-semibold">{step.label}</h2>
-      <step.Component errors={errors} touched={currentTouched} markTouched={markTouched} />
+      <div key={step.id} className={`flex flex-col gap-6 ${animationClass(direction)}`}>
+        <h2 className="text-xl font-semibold">{step.label}</h2>
+        <step.Component errors={errors} touched={currentTouched} markTouched={markTouched} />
+      </div>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <div className="flex items-center justify-between gap-3">
         <button
