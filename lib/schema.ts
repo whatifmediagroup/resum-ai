@@ -27,7 +27,7 @@ export const FormDataSchema = z.object({
   identity: z.object({
     fullName: z.string().min(1),
     phone: z.string().min(1),
-    email: z.email(),
+    email: z.string().regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email"),
     location: z.string().min(1),
   }),
   target: z.object({
@@ -51,7 +51,7 @@ export const ResumeJsonSchema = z.object({
     fullName: z.string().min(1),
     contact: z.object({
       phone: z.string().min(1),
-      email: z.email(),
+      email: z.string().regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email"),
       location: z.string().min(1),
     }),
     links: z.object({
