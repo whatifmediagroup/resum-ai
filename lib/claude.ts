@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import {
+  MAX_SKILLS,
   ResumeJsonSchema,
   type FormData,
   type JobContext,
@@ -37,13 +38,13 @@ Emit the resume by calling the \`emit_resume\` tool. The tool schema is the sour
   - Amplify the candidate's own descriptions; never fabricate experience, employers, titles, or dates.
   - Use past tense for all bullets; recentJob with current=true may use present tense.
 - **Education:** include institution + credential + dates. Omit GPA. Order most-recent first.
-- **Skills:** prioritize skills that appear in the job description. Limit to ~20. Order by relevance.
+- **Skills:** prioritize skills that appear in the job description. Return a MAXIMUM of 15 skills, ordered by relevance (most relevant first). Drop low-signal skills rather than truncating arbitrarily.
 
 ## Page Length & Prioritization
 - Target one page (standard 8.5"×11", 1" margins, 10–11pt).
 - Include the recent role first, then priorJobs most-relevant/recent first.
 - If space is tight: condense or omit the oldest priorJobs entirely rather than trimming bullets on recent, relevant ones.
-- Trim skills to the most relevant 10–12 if the resume overflows.
+- Trim skills to the most relevant 10–12 if the resume overflows; never exceed 15.
 
 ## Tone & Voice
 - Professional, achievement-focused, confident but not boastful.
@@ -124,7 +125,12 @@ function resumeJsonSchemaAsJsonSchema(): MinimalInputSchema {
           required: ["institution", "credential", "dates"],
         },
       },
-      skills: { type: "array", items: { type: "string" }, minItems: 1 },
+      skills: {
+        type: "array",
+        items: { type: "string" },
+        minItems: 1,
+        maxItems: MAX_SKILLS,
+      },
     },
     required: ["header", "summary", "experience", "education", "skills"],
   };
@@ -174,6 +180,11 @@ export class ResumeGenerationError extends Error {
   }
 }
 
+export function capSkills(resume: ResumeJson): ResumeJson {
+  if (resume.skills.length <= MAX_SKILLS) return resume;
+  return { ...resume, skills: resume.skills.slice(0, MAX_SKILLS) };
+}
+
 export async function generateResume(
   input: GenerateInput,
   client: AnthropicLike = defaultClient()
@@ -208,7 +219,7 @@ export async function generateResume(
   }
 
   const parsed = ResumeJsonSchema.safeParse(toolBlock.input);
-  if (parsed.success) return parsed.data;
+  if (parsed.success) return capSkills(parsed.data);
 
   const retryMessages: Anthropic.MessageParam[] = [
     ...buildMessages(input),
@@ -237,5 +248,5 @@ export async function generateResume(
   if (!retryParsed.success) {
     throw new ResumeGenerationError("schema", retryParsed.error.message);
   }
-  return retryParsed.data;
+  return capSkills(retryParsed.data);
 }

@@ -1,11 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import {
+  MAX_SKILLS,
   ResumeJsonSchema,
   type JobContext,
   type ResumeJson,
 } from "./schema";
 import {
   buildResumeTool,
+  capSkills,
   ResumeGenerationError,
   type AnthropicLike,
 } from "./claude";
@@ -26,7 +28,7 @@ REQUIRED FIELD HANDLING — every required field MUST be populated with a non-em
 - header.contact.phone, header.contact.email, header.contact.location: if a value is not in the resume, use the literal string "n/a". Email must look like an email; if there is no real email use "unknown@example.com".
 - experience: include at least one entry. Every entry needs company, title, dates, and at least one bullet. If something is missing, write "n/a". If the resume contains no work history at all, emit a single entry { company: "n/a", title: "n/a", dates: "n/a", bullets: ["No prior experience listed."] }.
 - education: include at least one entry with institution, credential, and dates. Use "n/a" for missing parts. If no education is listed, emit { institution: "n/a", credential: "n/a", dates: "n/a" }.
-- skills: include at least one skill string; if none are present, infer one or two from the experience text or use ["n/a"].
+- skills: include at least one skill string; if none are present, infer one or two from the experience text or use ["n/a"]. Return a MAXIMUM of 15 skills, ordered by relevance to the target job (most relevant first). If the resume lists more than 15, keep the 15 most relevant and drop the rest.
 
 LINKS — header.links keys (linkedIn, portfolio, github) are OPTIONAL:
 - Only include a link if it is a fully-qualified absolute URL starting with "https://" or "http://".
@@ -138,7 +140,8 @@ export function sanitizeProofreadOutput(raw: unknown): unknown {
       : [{ institution: "n/a", credential: "n/a", dates: "n/a" }];
 
   const skills = asStringArray(out.skills);
-  out.skills = skills.length > 0 ? skills : ["n/a"];
+  const nonEmpty = skills.length > 0 ? skills : ["n/a"];
+  out.skills = nonEmpty.slice(0, MAX_SKILLS);
 
   return out;
 }
@@ -211,7 +214,7 @@ export async function proofreadResume(
   const firstParsed = ResumeJsonSchema.safeParse(
     sanitizeProofreadOutput(toolBlock.input)
   );
-  if (firstParsed.success) return firstParsed.data;
+  if (firstParsed.success) return capSkills(firstParsed.data);
 
   console.warn(
     "[proofread] first pass schema validation failed:",
@@ -253,5 +256,5 @@ Call emit_resume again. Every required string MUST be non-empty — use "n/a" fo
     );
     throw new ResumeGenerationError("schema", retryParsed.error.message);
   }
-  return retryParsed.data;
+  return capSkills(retryParsed.data);
 }

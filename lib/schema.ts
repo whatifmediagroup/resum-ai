@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const MAX_SKILLS = 15;
+
 export const JobContextSchema = z.object({
   title: z.string().optional(),
   keywords: z.array(z.string()).default([]),
