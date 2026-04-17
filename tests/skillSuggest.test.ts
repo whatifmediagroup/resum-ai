@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
+import { MockLanguageModelV3 } from "ai/test";
 import {
   buildSuggestSkillsMessages,
   buildSuggestSkillsTool,
@@ -6,7 +7,6 @@ import {
   suggestSkills,
   __test__,
 } from "@/lib/skillSuggest";
-import type { AnthropicLike } from "@/lib/claude";
 import { ResumeGenerationError } from "@/lib/claude";
 
 describe("skillSuggest helpers", () => {
@@ -41,85 +41,64 @@ describe("skillSuggest helpers", () => {
   });
 });
 
-function fakeClient(toolInput: unknown): AnthropicLike {
+function textResult(payload: unknown) {
   return {
-    messages: {
-      create: vi.fn(async () => ({
-        id: "m_1",
-        type: "message",
-        role: "assistant",
-        model: "test",
-        stop_reason: "tool_use",
-        stop_sequence: null,
-        usage: { input_tokens: 0, output_tokens: 0 },
-        content: [
-          {
-            type: "tool_use",
-            id: "t_1",
-            name: "suggest_skills",
-            input: toolInput,
-          },
-        ],
-      })) as unknown as AnthropicLike["messages"]["create"],
-    },
+    content: [{ type: "text" as const, text: JSON.stringify(payload) }],
+    finishReason: { unified: "stop" as const, original: "stop" },
+    usage: { inputTokens: { total: 0 }, outputTokens: { total: 0 } },
+    warnings: [],
   };
+}
+
+function mockModel(result: unknown | (() => Promise<never>)) {
+  return new MockLanguageModelV3({
+    doGenerate: typeof result === "function"
+      ? (result as () => Promise<never>)
+      : async () => textResult(result) as never,
+  });
 }
 
 describe("suggestSkills", () => {
   it("returns the deduped list from a tool call", async () => {
-    const client = fakeClient({
-      suggestions: ["GraphQL", "React", "Next.js"],
-    });
     const out = await suggestSkills(
-      {
-        baseSkill: "TypeScript",
-        existingSkills: ["React"],
-      },
-      client
+      { baseSkill: "TypeScript", existingSkills: ["React"] },
+      mockModel({ suggestions: ["GraphQL", "React", "Next.js"] })
     );
     expect(out).toEqual(["GraphQL", "Next.js"]);
   });
 
-  it("throws schema error when no tool block is returned", async () => {
-    const client: AnthropicLike = {
-      messages: {
-        create: vi.fn(async () => ({
-          id: "m",
-          type: "message",
-          role: "assistant",
-          model: "test",
-          stop_reason: "end_turn",
-          stop_sequence: null,
-          usage: { input_tokens: 0, output_tokens: 0 },
-          content: [{ type: "text", text: "no tool" }],
-        })) as unknown as AnthropicLike["messages"]["create"],
-      },
-    };
+  it("throws schema error when the model returns no text", async () => {
+    const model = new MockLanguageModelV3({
+      doGenerate: async () =>
+        ({
+          content: [],
+          finishReason: { unified: "stop" as const, original: "stop" },
+          usage: { inputTokens: { total: 0 }, outputTokens: { total: 0 } },
+          warnings: [],
+        }) as never,
+    });
     await expect(
-      suggestSkills({ baseSkill: "x", existingSkills: [] }, client)
+      suggestSkills({ baseSkill: "x", existingSkills: [] }, model)
     ).rejects.toBeInstanceOf(ResumeGenerationError);
   });
 
   it("throws schema error when all suggestions are duplicates", async () => {
-    const client = fakeClient({ suggestions: ["React", "react"] });
     await expect(
       suggestSkills(
         { baseSkill: "x", existingSkills: ["React"] },
-        client
+        mockModel({ suggestions: ["React", "react"] })
       )
     ).rejects.toBeInstanceOf(ResumeGenerationError);
   });
 
   it("wraps upstream errors", async () => {
-    const client: AnthropicLike = {
-      messages: {
-        create: vi.fn(async () => {
-          throw new Error("net");
-        }) as unknown as AnthropicLike["messages"]["create"],
+    const model = new MockLanguageModelV3({
+      doGenerate: async () => {
+        throw new Error("net");
       },
-    };
+    });
     await expect(
-      suggestSkills({ baseSkill: "x", existingSkills: [] }, client)
+      suggestSkills({ baseSkill: "x", existingSkills: [] }, model)
     ).rejects.toMatchObject({ code: "upstream" });
   });
 });

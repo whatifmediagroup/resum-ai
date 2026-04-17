@@ -1,16 +1,18 @@
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  generateObject,
+  NoObjectGeneratedError,
+  type LanguageModel,
+  type ModelMessage,
+  type SystemModelMessage,
+} from "ai";
+import { anthropic } from "@ai-sdk/anthropic";
 import {
   MAX_SKILLS,
   ResumeJsonSchema,
   type JobContext,
   type ResumeJson,
 } from "./schema";
-import {
-  buildResumeTool,
-  capSkills,
-  ResumeGenerationError,
-  type AnthropicLike,
-} from "./claude";
+import { capSkills, ResumeGenerationError } from "./claude";
 
 export const PROOFREAD_SYSTEM_PROMPT = `You are a professional resume editor. The user will provide the raw text of their existing resume plus an optional target job context.
 
@@ -43,8 +45,8 @@ export type ProofreadInput = {
   nudge?: string;
 };
 
-function defaultClient(): AnthropicLike {
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function defaultModel(): LanguageModel {
+  return anthropic(process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6");
 }
 
 const URL_RE = /^https?:\/\//i;
@@ -151,7 +153,7 @@ export function sanitizeProofreadOutput(raw: unknown): unknown {
 
 export function buildProofreadMessages(
   input: ProofreadInput
-): Anthropic.MessageParam[] {
+): ModelMessage[] {
   const { resumeText, jobContext, nudge } = input;
   const ctx = {
     title: jobContext.title ?? null,
@@ -179,85 +181,61 @@ ${resumeText.trim()}
 
 export async function proofreadResume(
   input: ProofreadInput,
-  client: AnthropicLike = defaultClient()
+  model: LanguageModel = defaultModel()
 ): Promise<ResumeJson> {
-  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
-  const tool = buildResumeTool();
+  const system: SystemModelMessage = {
+    role: "system",
+    content: PROOFREAD_SYSTEM_PROMPT,
+    providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
+  };
+  const baseMessages = buildProofreadMessages(input);
 
-  const tryOnce = async (messages: Anthropic.MessageParam[]) =>
-    client.messages.create({
+  const callOnce = (extra: ModelMessage[] = []) =>
+    generateObject({
       model,
-      max_tokens: 4096,
-      system: [
-        {
-          type: "text",
-          text: PROOFREAD_SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      tools: [tool],
-      tool_choice: { type: "tool", name: tool.name },
-      messages,
+      schema: ResumeJsonSchema,
+      schemaName: "emit_resume",
+      schemaDescription: "Emit the tailored resume as structured data.",
+      system: [system],
+      messages: [...baseMessages, ...extra],
+      maxOutputTokens: 4096,
+      providerOptions: {
+        anthropic: { structuredOutputMode: "jsonTool" },
+      },
+      experimental_repairText: async ({ text }) => {
+        try {
+          const obj = JSON.parse(text);
+          return JSON.stringify(sanitizeProofreadOutput(obj));
+        } catch {
+          return null;
+        }
+      },
     });
 
-  let response: Anthropic.Message;
   try {
-    response = await tryOnce(buildProofreadMessages(input));
+    const { object } = await callOnce();
+    return capSkills(object);
   } catch (err) {
-    throw new ResumeGenerationError("upstream", (err as Error).message);
+    if (!NoObjectGeneratedError.isInstance(err)) {
+      throw new ResumeGenerationError("upstream", (err as Error).message);
+    }
+    console.warn("[proofread] first pass schema validation failed:", err.message);
+    const correction = `Your previous emit_resume arguments did not match the schema. Issues:
+${err.message}
+
+Call emit_resume again. Every required string MUST be non-empty — use "n/a" for missing fields. Every link in header.links MUST be a fully-qualified https:// URL or be omitted entirely.`;
+
+    try {
+      const { object } = await callOnce([
+        { role: "user", content: correction },
+      ]);
+      return capSkills(object);
+    } catch (retryErr) {
+      if (NoObjectGeneratedError.isInstance(retryErr)) {
+        console.warn("[proofread] retry schema validation failed:", retryErr.message);
+        throw new ResumeGenerationError("schema", retryErr.message);
+      }
+      throw new ResumeGenerationError("upstream", (retryErr as Error).message);
+    }
   }
-
-  const toolBlock = response.content.find(
-    (b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === tool.name
-  );
-  if (!toolBlock) {
-    throw new ResumeGenerationError("schema", "Claude did not call emit_resume.");
-  }
-
-  const firstParsed = ResumeJsonSchema.safeParse(
-    sanitizeProofreadOutput(toolBlock.input)
-  );
-  if (firstParsed.success) return capSkills(firstParsed.data);
-
-  console.warn(
-    "[proofread] first pass schema validation failed:",
-    JSON.stringify(firstParsed.error.issues, null, 2)
-  );
-
-  const retryMessages: Anthropic.MessageParam[] = [
-    ...buildProofreadMessages(input),
-    {
-      role: "user",
-      content: `Your previous emit_resume arguments did not match the schema. Issues:
-${JSON.stringify(firstParsed.error.issues, null, 2)}
-
-Call emit_resume again. Every required string MUST be non-empty — use "n/a" for missing fields. Every link in header.links MUST be a fully-qualified https:// URL or be omitted entirely.`,
-    },
-  ];
-
-  let retry: Anthropic.Message;
-  try {
-    retry = await tryOnce(retryMessages);
-  } catch (err) {
-    throw new ResumeGenerationError("upstream", (err as Error).message);
-  }
-
-  const retryBlock = retry.content.find(
-    (b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === tool.name
-  );
-  if (!retryBlock) {
-    throw new ResumeGenerationError("schema", "Claude did not call emit_resume on retry.");
-  }
-
-  const retryParsed = ResumeJsonSchema.safeParse(
-    sanitizeProofreadOutput(retryBlock.input)
-  );
-  if (!retryParsed.success) {
-    console.warn(
-      "[proofread] retry schema validation failed:",
-      JSON.stringify(retryParsed.error.issues, null, 2)
-    );
-    throw new ResumeGenerationError("schema", retryParsed.error.message);
-  }
-  return capSkills(retryParsed.data);
 }

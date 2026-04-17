@@ -1,4 +1,11 @@
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  generateObject,
+  NoObjectGeneratedError,
+  type LanguageModel,
+  type ModelMessage,
+  type SystemModelMessage,
+} from "ai";
+import { anthropic } from "@ai-sdk/anthropic";
 import {
   MAX_SKILLS,
   ResumeJsonSchema,
@@ -150,7 +157,7 @@ export type GenerateInput = {
   nudge?: string;
 };
 
-export function buildMessages(input: GenerateInput): Anthropic.MessageParam[] {
+export function buildMessages(input: GenerateInput): ModelMessage[] {
   const body = {
     jobContext: input.jobContext,
     formData: input.formData,
@@ -164,16 +171,6 @@ export function buildMessages(input: GenerateInput): Anthropic.MessageParam[] {
   ];
 }
 
-export type AnthropicLike = {
-  messages: {
-    create(args: Anthropic.MessageCreateParamsNonStreaming): Promise<Anthropic.Message>;
-  };
-};
-
-function defaultClient(): AnthropicLike {
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-}
-
 export class ResumeGenerationError extends Error {
   constructor(public readonly code: "upstream" | "schema", message: string) {
     super(message);
@@ -185,7 +182,7 @@ export function capSkills(resume: ResumeJson): ResumeJson {
   return { ...resume, skills: resume.skills.slice(0, MAX_SKILLS) };
 }
 
-function stripEmptyOptionalUrls(input: unknown): unknown {
+export function stripEmptyOptionalUrls(input: unknown): unknown {
   if (!input || typeof input !== "object") return input;
   const obj = input as Record<string, unknown>;
   const header = obj.header as Record<string, unknown> | undefined;
@@ -202,76 +199,67 @@ function stripEmptyOptionalUrls(input: unknown): unknown {
   return obj;
 }
 
+function defaultModel(): LanguageModel {
+  return anthropic(process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6");
+}
+
+const RETRY_CORRECTION =
+  "Your previous emit_resume arguments did not match the schema. Call emit_resume again and ensure every required field is present and non-empty.";
+
 export async function generateResume(
   input: GenerateInput,
-  client: AnthropicLike = defaultClient()
+  model: LanguageModel = defaultModel()
 ): Promise<ResumeJson> {
-  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
-  const tool = buildResumeTool();
+  const system: SystemModelMessage = {
+    role: "system",
+    content: SYSTEM_PROMPT,
+    providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
+  };
+  const baseMessages = buildMessages(input);
 
-  const tryOnce = async (messages: Anthropic.MessageParam[]) =>
-    client.messages.create({
+  const callOnce = (extra: ModelMessage[] = []) =>
+    generateObject({
       model,
-      max_tokens: 4096,
-      system: [
-        { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-      ],
-      tools: [tool],
-      tool_choice: { type: "tool", name: tool.name },
-      messages,
+      schema: ResumeJsonSchema,
+      schemaName: "emit_resume",
+      schemaDescription: "Emit the tailored resume as structured data.",
+      system: [system],
+      messages: [...baseMessages, ...extra],
+      maxOutputTokens: 4096,
+      providerOptions: {
+        anthropic: { structuredOutputMode: "jsonTool" },
+      },
+      experimental_repairText: async ({ text }) => {
+        try {
+          const obj = JSON.parse(text);
+          return JSON.stringify(stripEmptyOptionalUrls(obj));
+        } catch {
+          return null;
+        }
+      },
     });
 
-  let response: Anthropic.Message;
   try {
-    response = await tryOnce(buildMessages(input));
+    const { object } = await callOnce();
+    return capSkills(object);
   } catch (err) {
-    console.error("[generateResume] upstream error:", err);
-    throw new ResumeGenerationError("upstream", (err as Error).message);
+    if (!NoObjectGeneratedError.isInstance(err)) {
+      console.error("[generateResume] upstream error:", err);
+      throw new ResumeGenerationError("upstream", (err as Error).message);
+    }
+    console.error("[generateResume] first attempt schema fail:", err.message);
+    try {
+      const { object } = await callOnce([
+        { role: "user", content: RETRY_CORRECTION },
+      ]);
+      return capSkills(object);
+    } catch (retryErr) {
+      if (NoObjectGeneratedError.isInstance(retryErr)) {
+        console.error("[generateResume] retry schema fail:", retryErr.message);
+        throw new ResumeGenerationError("schema", retryErr.message);
+      }
+      console.error("[generateResume] retry upstream error:", retryErr);
+      throw new ResumeGenerationError("upstream", (retryErr as Error).message);
+    }
   }
-
-  const toolBlock = response.content.find(
-    (b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === tool.name
-  );
-  if (!toolBlock) {
-    console.error("[generateResume] no tool_use block. stop_reason:", response.stop_reason, "content:", JSON.stringify(response.content));
-    throw new ResumeGenerationError("schema", "Claude did not call emit_resume.");
-  }
-
-  const firstInput = stripEmptyOptionalUrls(toolBlock.input);
-  const parsed = ResumeJsonSchema.safeParse(firstInput);
-  if (parsed.success) return capSkills(parsed.data);
-  console.error("[generateResume] first attempt schema fail:", JSON.stringify(parsed.error.issues), "input:", JSON.stringify(toolBlock.input));
-
-  const retryMessages: Anthropic.MessageParam[] = [
-    ...buildMessages(input),
-    {
-      role: "user",
-      content:
-        "Your previous emit_resume arguments did not match the schema. Call emit_resume again and ensure every required field is present and non-empty.",
-    },
-  ];
-
-  let retry: Anthropic.Message;
-  try {
-    retry = await tryOnce(retryMessages);
-  } catch (err) {
-    console.error("[generateResume] retry upstream error:", err);
-    throw new ResumeGenerationError("upstream", (err as Error).message);
-  }
-
-  const retryBlock = retry.content.find(
-    (b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === tool.name
-  );
-  if (!retryBlock) {
-    console.error("[generateResume] retry had no tool_use block. stop_reason:", retry.stop_reason, "content:", JSON.stringify(retry.content));
-    throw new ResumeGenerationError("schema", "Claude did not call emit_resume on retry.");
-  }
-
-  const retryInput = stripEmptyOptionalUrls(retryBlock.input);
-  const retryParsed = ResumeJsonSchema.safeParse(retryInput);
-  if (!retryParsed.success) {
-    console.error("[generateResume] retry schema fail:", JSON.stringify(retryParsed.error.issues), "input:", JSON.stringify(retryBlock.input));
-    throw new ResumeGenerationError("schema", retryParsed.error.message);
-  }
-  return capSkills(retryParsed.data);
 }

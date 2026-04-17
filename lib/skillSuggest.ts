@@ -1,5 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
-import type { AnthropicLike } from "./claude";
+import { generateObject, NoObjectGeneratedError, type LanguageModel, type ModelMessage, type SystemModelMessage } from "ai";
+import { anthropic } from "@ai-sdk/anthropic";
+import { z } from "zod";
 import { ResumeGenerationError } from "./claude";
 
 export const SKILL_SUGGEST_SYSTEM_PROMPT = `You suggest 3-5 short, professionally-relevant resume skills (1-3 words each) that complement the candidate's existing skill list, prioritizing relevance to their target role.
@@ -17,6 +18,10 @@ export type SkillSuggestInput = {
   targetPitch?: string;
   existingSkills: string[];
 };
+
+const SuggestSkillsSchema = z.object({
+  suggestions: z.array(z.string()).min(1).max(5),
+});
 
 type MinimalInputSchema = {
   type: "object";
@@ -46,7 +51,7 @@ export function buildSuggestSkillsTool() {
 
 export function buildSuggestSkillsMessages(
   input: SkillSuggestInput
-): Anthropic.MessageParam[] {
+): ModelMessage[] {
   const body = {
     baseSkill: input.baseSkill,
     targetTitle: input.targetTitle ?? null,
@@ -64,8 +69,8 @@ ${JSON.stringify(body, null, 2)}`,
   ];
 }
 
-function defaultClient(): AnthropicLike {
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function defaultModel(): LanguageModel {
+  return anthropic(process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6");
 }
 
 function dedupeAgainst(suggestions: string[], existing: string[]): string[] {
@@ -86,46 +91,37 @@ function dedupeAgainst(suggestions: string[], existing: string[]): string[] {
 
 export async function suggestSkills(
   input: SkillSuggestInput,
-  client: AnthropicLike = defaultClient()
+  model: LanguageModel = defaultModel()
 ): Promise<string[]> {
-  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
-  const tool = buildSuggestSkillsTool();
+  const system: SystemModelMessage = {
+    role: "system",
+    content: SKILL_SUGGEST_SYSTEM_PROMPT,
+    providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
+  };
 
-  let response: Anthropic.Message;
+  let object: z.infer<typeof SuggestSkillsSchema>;
   try {
-    response = await client.messages.create({
+    const result = await generateObject({
       model,
-      max_tokens: 512,
-      system: [
-        {
-          type: "text",
-          text: SKILL_SUGGEST_SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      tools: [tool],
-      tool_choice: { type: "tool", name: tool.name },
+      schema: SuggestSkillsSchema,
+      schemaName: "suggest_skills",
+      schemaDescription: "Emit related professional skills relevant to the target role.",
+      system: [system],
       messages: buildSuggestSkillsMessages(input),
+      maxOutputTokens: 512,
+      providerOptions: {
+        anthropic: { structuredOutputMode: "jsonTool" },
+      },
     });
+    object = result.object;
   } catch (err) {
+    if (NoObjectGeneratedError.isInstance(err)) {
+      throw new ResumeGenerationError("schema", err.message);
+    }
     throw new ResumeGenerationError("upstream", (err as Error).message);
   }
 
-  const block = response.content.find(
-    (b): b is Anthropic.ToolUseBlock =>
-      b.type === "tool_use" && b.name === tool.name
-  );
-  if (!block) {
-    throw new ResumeGenerationError("schema", "Claude did not call suggest_skills.");
-  }
-
-  const raw = block.input as { suggestions?: unknown };
-  const arr = Array.isArray(raw?.suggestions) ? (raw.suggestions as unknown[]) : [];
-  const cleaned = dedupeAgainst(
-    arr.filter((s): s is string => typeof s === "string"),
-    input.existingSkills
-  );
-
+  const cleaned = dedupeAgainst(object.suggestions, input.existingSkills);
   if (cleaned.length === 0) {
     throw new ResumeGenerationError("schema", "No usable suggestions returned.");
   }
