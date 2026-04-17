@@ -5,6 +5,7 @@ import { useResume } from "@/lib/resumeContext";
 import { ResumeProviderShell } from "./_shell";
 import { ResumePreview } from "./_components/ResumePreview";
 import { NudgeForm } from "./_components/NudgeForm";
+import { MatchingJobs } from "./_components/MatchingJobs";
 import { steps } from "@/app/build/_components/steps";
 
 function describeError(status: number): string {
@@ -122,6 +123,7 @@ function PreviewInner() {
         regenerating={regenerating}
         error={error}
       />
+      <MatchingJobs />
     </main>
   );
 }
