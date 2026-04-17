@@ -27,8 +27,11 @@ export function Identity({ errors, touched, markTouched }: StepProps) {
         label="Phone"
         value={id.phone}
         error={fieldError("phone")}
+        inputMode="tel"
+        autoComplete="tel"
+        maxLength={14}
         onChange={(v) => {
-          set({ phone: v });
+          set({ phone: formatUsPhoneInput(v) });
           markTouched("phone");
         }}
         onBlur={() => markTouched("phone")}
@@ -68,6 +71,17 @@ export function validateIdentity(data: FormData): StepErrors {
   return errs;
 }
 
+/** North American display: (xxx) xxx-xxxx */
+function formatUsPhoneInput(raw: string): string {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.length === 11 && digits[0] === "1") digits = digits.slice(1);
+  digits = digits.slice(0, 10);
+  if (digits.length === 0) return "";
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 function Field(props: {
   label: string;
   value: string;
@@ -75,6 +89,9 @@ function Field(props: {
   onChange: (v: string) => void;
   onBlur?: () => void;
   type?: string;
+  inputMode?: "tel" | "text" | "email" | "numeric" | "url" | "search" | "none";
+  autoComplete?: string;
+  maxLength?: number;
 }) {
   const hasError = Boolean(props.error);
   return (
@@ -83,6 +100,9 @@ function Field(props: {
       <input
         type={props.type ?? "text"}
         value={props.value}
+        inputMode={props.inputMode}
+        autoComplete={props.autoComplete}
+        maxLength={props.maxLength}
         onChange={(e) => props.onChange(e.target.value)}
         onBlur={props.onBlur}
         aria-invalid={hasError || undefined}
