@@ -42,4 +42,23 @@ describe("storage", () => {
     localStorage.setItem("resume-ai:job1", "{not-json");
     expect(readSession("job1")).toBeNull();
   });
+
+  it("writeSession does not throw when setItem fails", () => {
+    const orig = Storage.prototype.setItem;
+    Storage.prototype.setItem = () => {
+      throw new Error("QuotaExceededError");
+    };
+    try {
+      expect(() =>
+        writeSession("job1", {
+          jobContext: { keywords: [] },
+          formData: emptyFormData,
+          resumeJson: null,
+          delivered: false,
+        })
+      ).not.toThrow();
+    } finally {
+      Storage.prototype.setItem = orig;
+    }
+  });
 });

@@ -38,7 +38,11 @@ export function readSession(jobId: string | undefined): Session | null {
 export function writeSession(jobId: string | undefined, session: Session): void {
   const ls = safeLocalStorage();
   if (!ls) return;
-  ls.setItem(keyFor(jobId), JSON.stringify(session));
+  try {
+    ls.setItem(keyFor(jobId), JSON.stringify(session));
+  } catch {
+    // Silent fail: quota exceeded, disabled storage, etc.
+  }
 }
 
 export function clearSession(jobId: string | undefined): void {
