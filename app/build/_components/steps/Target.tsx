@@ -1,12 +1,16 @@
 "use client";
 import { useResume } from "@/lib/resumeContext";
 import type { FormData } from "@/lib/schema";
+import type { StepProps, StepErrors } from "./index";
 
-export function Target() {
+export function Target({ errors, touched, markTouched }: StepProps) {
   const { formData, updateFormData, jobContext } = useResume();
   const t = formData.target;
   const set = (patch: Partial<FormData["target"]>) =>
     updateFormData({ target: { ...t, ...patch } });
+
+  const titleError = touched.title ? errors.title : undefined;
+  const pitchError = touched.pitch ? errors.pitch : undefined;
 
   return (
     <div className="flex flex-col gap-4">
@@ -14,28 +18,48 @@ export function Target() {
         <span>Desired title</span>
         <input
           value={t.title}
-          onChange={(e) => set({ title: e.target.value })}
+          onChange={(e) => {
+            set({ title: e.target.value });
+            markTouched("title");
+          }}
+          onBlur={() => markTouched("title")}
           placeholder={jobContext.title}
-          className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+          aria-invalid={Boolean(titleError) || undefined}
+          className={`rounded border px-3 py-2 dark:bg-zinc-900 ${
+            titleError
+              ? "border-red-500 dark:border-red-500"
+              : "border-zinc-300 dark:border-zinc-700"
+          }`}
         />
+        {titleError ? <span className="text-xs text-red-600">{titleError}</span> : null}
       </label>
       <label className="flex flex-col gap-1 text-sm">
         <span>Short pitch</span>
         <textarea
           rows={4}
           value={t.pitch}
-          onChange={(e) => set({ pitch: e.target.value })}
+          onChange={(e) => {
+            set({ pitch: e.target.value });
+            markTouched("pitch");
+          }}
+          onBlur={() => markTouched("pitch")}
           placeholder="One or two sentences about what you want to do next."
-          className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+          aria-invalid={Boolean(pitchError) || undefined}
+          className={`rounded border px-3 py-2 dark:bg-zinc-900 ${
+            pitchError
+              ? "border-red-500 dark:border-red-500"
+              : "border-zinc-300 dark:border-zinc-700"
+          }`}
         />
+        {pitchError ? <span className="text-xs text-red-600">{pitchError}</span> : null}
       </label>
     </div>
   );
 }
 
-export function validateTarget(data: FormData): string[] {
-  const errs: string[] = [];
-  if (!data.target.title) errs.push("title");
-  if (!data.target.pitch) errs.push("pitch");
+export function validateTarget(data: FormData): StepErrors {
+  const errs: StepErrors = {};
+  if (!data.target.title) errs.title = "Target title is required.";
+  if (!data.target.pitch) errs.pitch = "Add a short pitch so we can tailor the summary.";
   return errs;
 }
