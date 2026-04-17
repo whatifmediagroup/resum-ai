@@ -113,7 +113,7 @@ export function UploadView() {
       });
       setSourceResumeText(text);
       setResumeJson(json);
-      router.push("/preview");
+      router.push(`/preview${window.location.search}`);
     } catch (err) {
       setError((err as Error).message);
     } finally {
