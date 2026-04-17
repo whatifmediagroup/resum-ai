@@ -15,23 +15,21 @@ import { steps } from "@/app/build/_components/steps";
 import { KoalaMascot } from "@/app/_components/KoalaMascot";
 
 async function extractPdfText(file: File): Promise<string> {
-  const arrayBuffer = await file.arrayBuffer();
-  const pdfjsLib = await import("pdfjs-dist");
-  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch("/api/extract-pdf", { method: "POST", body: form });
+  if (!res.ok) {
+    let detail: string | undefined;
+    try {
+      const body = (await res.json()) as { message?: string; error?: string };
+      detail = body?.message ?? body?.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail ?? `extract failed (${res.status})`);
   }
-  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-  let full = "";
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const pageText = content.items
-      .map((item) => ("str" in item && typeof item.str === "string" ? item.str : ""))
-      .filter(Boolean)
-      .join(" ");
-    full += pageText + "\n\n";
-  }
-  return full.trim();
+  const { text } = (await res.json()) as { text: string };
+  return text;
 }
 
 function describeError(status: number): string {
@@ -71,7 +69,9 @@ export function UploadView() {
       }
     } catch (err) {
       console.error("Extraction failed:", err);
-      setError("Could not parse that file. Try pasting the text below instead.");
+      const detail = err instanceof Error ? err.message : "";
+      const base = "Could not parse that file. Try pasting the text below instead.";
+      setError(detail ? `${base} (${detail})` : base);
     } finally {
       setParsing(false);
     }
