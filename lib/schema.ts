@@ -8,6 +8,15 @@ export const JobContextSchema = z.object({
 export type JobContext = z.infer<typeof JobContextSchema>;
 
 const JobSchema = z.object({
+  company: z.string(),
+  title: z.string(),
+  start: z.string(),
+  end: z.string().optional(),
+  current: z.boolean(),
+  description: z.string(),
+});
+
+const FilledJobSchema = z.object({
   company: z.string().min(1),
   title: z.string().min(1),
   start: z.string().min(1),
@@ -35,8 +44,8 @@ export const FormDataSchema = z.object({
     pitch: z.string().min(1),
   }),
   recentJob: JobSchema,
-  priorJobs: z.array(JobSchema),
-  education: z.array(EducationEntrySchema).min(1),
+  priorJobs: z.array(FilledJobSchema),
+  education: z.array(EducationEntrySchema),
   skills: z.array(z.string().min(1)).min(1),
   links: z.object({
     linkedIn: z.string().url().optional(),
@@ -71,15 +80,13 @@ export const ResumeJsonSchema = z.object({
       })
     )
     .min(1),
-  education: z
-    .array(
-      z.object({
-        institution: z.string().min(1),
-        credential: z.string().min(1),
-        dates: z.string().min(1),
-      })
-    )
-    .min(1),
+  education: z.array(
+    z.object({
+      institution: z.string().min(1),
+      credential: z.string().min(1),
+      dates: z.string().min(1),
+    })
+  ),
   skills: z.array(z.string().min(1)).min(1),
 });
 export type ResumeJson = z.infer<typeof ResumeJsonSchema>;

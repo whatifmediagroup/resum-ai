@@ -74,17 +74,19 @@ export function ResumeDocument({ data }: { data: ResumeJson }) {
           ))}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Education</Text>
-          {data.education.map((e, i) => (
-            <View key={i} style={styles.jobHeader}>
-              <Text style={styles.jobTitle}>
-                {e.credential} — {e.institution}
-              </Text>
-              <Text style={styles.dates}>{e.dates}</Text>
-            </View>
-          ))}
-        </View>
+        {data.education.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Education</Text>
+            {data.education.map((e, i) => (
+              <View key={i} style={styles.jobHeader}>
+                <Text style={styles.jobTitle}>
+                  {e.credential} — {e.institution}
+                </Text>
+                <Text style={styles.dates}>{e.dates}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Skills</Text>

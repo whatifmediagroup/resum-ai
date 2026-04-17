@@ -1,12 +1,13 @@
 "use client";
 import { useResume } from "@/lib/resumeContext";
 import type { FormData } from "@/lib/schema";
+import type { StepProps, StepErrors } from "./index";
 
 type Job = FormData["priorJobs"][number];
 
 const emptyJob: Job = { company: "", title: "", start: "", current: false, description: "" };
 
-export function PriorJobs() {
+export function PriorJobs({ errors, touched, markTouched }: StepProps) {
   const { formData, updateFormData } = useResume();
   const jobs = formData.priorJobs;
 
@@ -18,11 +19,15 @@ export function PriorJobs() {
   const remove = (idx: number) =>
     updateFormData({ priorJobs: jobs.filter((_, i) => i !== idx) });
 
+  const fieldKey = (idx: number, name: string) => `priorJobs.${idx}.${name}`;
+  const fieldError = (idx: number, name: string) =>
+    touched[fieldKey(idx, name)] ? errors[fieldKey(idx, name)] : undefined;
+
   if (jobs.length === 0) {
     return (
       <div className="flex flex-col gap-3">
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          No earlier jobs? You can skip this step.
+          No earlier jobs? Click Skip below, or add one here.
         </p>
         <button
           type="button"
@@ -50,9 +55,36 @@ export function PriorJobs() {
             </button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Company" value={j.company} onChange={(v) => replace(idx, { company: v })} />
-            <Input label="Title" value={j.title} onChange={(v) => replace(idx, { title: v })} />
-            <Input label="Start" value={j.start} onChange={(v) => replace(idx, { start: v })} />
+            <Input
+              label="Company"
+              value={j.company}
+              error={fieldError(idx, "company")}
+              onChange={(v) => {
+                replace(idx, { company: v });
+                markTouched(fieldKey(idx, "company"));
+              }}
+              onBlur={() => markTouched(fieldKey(idx, "company"))}
+            />
+            <Input
+              label="Title"
+              value={j.title}
+              error={fieldError(idx, "title")}
+              onChange={(v) => {
+                replace(idx, { title: v });
+                markTouched(fieldKey(idx, "title"));
+              }}
+              onBlur={() => markTouched(fieldKey(idx, "title"))}
+            />
+            <Input
+              label="Start"
+              value={j.start}
+              error={fieldError(idx, "start")}
+              onChange={(v) => {
+                replace(idx, { start: v });
+                markTouched(fieldKey(idx, "start"));
+              }}
+              onBlur={() => markTouched(fieldKey(idx, "start"))}
+            />
             <Input
               label="End"
               value={j.end ?? ""}
@@ -64,9 +96,21 @@ export function PriorJobs() {
             <textarea
               rows={3}
               value={j.description}
-              onChange={(e) => replace(idx, { description: e.target.value })}
-              className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              onChange={(e) => {
+                replace(idx, { description: e.target.value });
+                markTouched(fieldKey(idx, "description"));
+              }}
+              onBlur={() => markTouched(fieldKey(idx, "description"))}
+              aria-invalid={Boolean(fieldError(idx, "description")) || undefined}
+              className={`rounded border px-3 py-2 dark:bg-zinc-900 ${
+                fieldError(idx, "description")
+                  ? "border-red-500 dark:border-red-500"
+                  : "border-zinc-300 dark:border-zinc-700"
+              }`}
             />
+            {fieldError(idx, "description") ? (
+              <span className="text-xs text-red-600">{fieldError(idx, "description")}</span>
+            ) : null}
           </label>
         </div>
       ))}
@@ -81,26 +125,40 @@ export function PriorJobs() {
   );
 }
 
-export function validatePriorJobs(data: FormData): string[] {
-  const errs: string[] = [];
+export function validatePriorJobs(data: FormData): StepErrors {
+  const errs: StepErrors = {};
   data.priorJobs.forEach((j, i) => {
-    if (!j.company) errs.push(`priorJobs.${i}.company`);
-    if (!j.title) errs.push(`priorJobs.${i}.title`);
-    if (!j.start) errs.push(`priorJobs.${i}.start`);
-    if (!j.description) errs.push(`priorJobs.${i}.description`);
+    if (!j.company) errs[`priorJobs.${i}.company`] = "Company is required.";
+    if (!j.title) errs[`priorJobs.${i}.title`] = "Title is required.";
+    if (!j.start) errs[`priorJobs.${i}.start`] = "Start is required.";
+    if (!j.description) errs[`priorJobs.${i}.description`] = "Description is required.";
   });
   return errs;
 }
 
-function Input(props: { label: string; value: string; onChange: (v: string) => void }) {
+function Input(props: {
+  label: string;
+  value: string;
+  error?: string;
+  onChange: (v: string) => void;
+  onBlur?: () => void;
+}) {
+  const hasError = Boolean(props.error);
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span>{props.label}</span>
       <input
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
-        className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+        onBlur={props.onBlur}
+        aria-invalid={hasError || undefined}
+        className={`rounded border px-3 py-2 dark:bg-zinc-900 ${
+          hasError
+            ? "border-red-500 dark:border-red-500"
+            : "border-zinc-300 dark:border-zinc-700"
+        }`}
       />
+      {hasError ? <span className="text-xs text-red-600">{props.error}</span> : null}
     </label>
   );
 }

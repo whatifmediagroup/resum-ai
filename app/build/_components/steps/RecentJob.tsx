@@ -1,23 +1,66 @@
 "use client";
 import { useResume } from "@/lib/resumeContext";
 import type { FormData } from "@/lib/schema";
+import type { StepProps, StepErrors } from "./index";
 
-export function RecentJob() {
+export function isRecentJobEmpty(j: FormData["recentJob"]): boolean {
+  return !j.company && !j.title && !j.start && !j.description && !j.end;
+}
+
+export function RecentJob({ errors, touched, markTouched }: StepProps) {
   const { formData, updateFormData } = useResume();
   const j = formData.recentJob;
   const set = (patch: Partial<FormData["recentJob"]>) =>
     updateFormData({ recentJob: { ...j, ...patch } });
 
+  const fieldError = (name: string) => (touched[name] ? errors[name] : undefined);
+  const mark = (name: string) => markTouched(name);
+
   return (
     <div className="flex flex-col gap-4">
-      <Field label="Company" value={j.company} onChange={(v) => set({ company: v })} />
-      <Field label="Title" value={j.title} onChange={(v) => set({ title: v })} />
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        No relevant current role? Click Skip below to continue.
+      </p>
+      <Field
+        label="Company"
+        value={j.company}
+        error={fieldError("company")}
+        onChange={(v) => {
+          set({ company: v });
+          mark("company");
+        }}
+        onBlur={() => mark("company")}
+      />
+      <Field
+        label="Title"
+        value={j.title}
+        error={fieldError("title")}
+        onChange={(v) => {
+          set({ title: v });
+          mark("title");
+        }}
+        onBlur={() => mark("title")}
+      />
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Start (YYYY-MM)" value={j.start} onChange={(v) => set({ start: v })} />
+        <Field
+          label="Start (YYYY-MM)"
+          value={j.start}
+          error={fieldError("start")}
+          onChange={(v) => {
+            set({ start: v });
+            mark("start");
+          }}
+          onBlur={() => mark("start")}
+        />
         <Field
           label="End (YYYY-MM)"
           value={j.end ?? ""}
-          onChange={(v) => set({ end: v || undefined })}
+          error={fieldError("end")}
+          onChange={(v) => {
+            set({ end: v || undefined });
+            mark("end");
+          }}
+          onBlur={() => mark("end")}
           disabled={j.current}
         />
       </div>
@@ -25,7 +68,9 @@ export function RecentJob() {
         <input
           type="checkbox"
           checked={j.current}
-          onChange={(e) => set({ current: e.target.checked, end: e.target.checked ? undefined : j.end })}
+          onChange={(e) =>
+            set({ current: e.target.checked, end: e.target.checked ? undefined : j.end })
+          }
         />
         Currently work here
       </label>
@@ -34,40 +79,63 @@ export function RecentJob() {
         <textarea
           rows={5}
           value={j.description}
-          onChange={(e) => set({ description: e.target.value })}
-          className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+          onChange={(e) => {
+            set({ description: e.target.value });
+            mark("description");
+          }}
+          onBlur={() => mark("description")}
+          aria-invalid={Boolean(fieldError("description")) || undefined}
+          className={`rounded border px-3 py-2 dark:bg-zinc-900 ${
+            fieldError("description")
+              ? "border-red-500 dark:border-red-500"
+              : "border-zinc-300 dark:border-zinc-700"
+          }`}
         />
+        {fieldError("description") ? (
+          <span className="text-xs text-red-600">{fieldError("description")}</span>
+        ) : null}
       </label>
     </div>
   );
 }
 
-export function validateRecentJob(data: FormData): string[] {
-  const errs: string[] = [];
+export function validateRecentJob(data: FormData): StepErrors {
+  const errs: StepErrors = {};
   const j = data.recentJob;
-  if (!j.company) errs.push("company");
-  if (!j.title) errs.push("title");
-  if (!j.start) errs.push("start");
-  if (!j.description) errs.push("description");
-  if (!j.current && !j.end) errs.push("end");
+  if (isRecentJobEmpty(j)) return errs;
+  if (!j.company) errs.company = "Company is required.";
+  if (!j.title) errs.title = "Title is required.";
+  if (!j.start) errs.start = "Start date is required.";
+  if (!j.description) errs.description = "Add a description or bullets.";
+  if (!j.current && !j.end) errs.end = "End date is required (or mark as current).";
   return errs;
 }
 
 function Field(props: {
   label: string;
   value: string;
+  error?: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   disabled?: boolean;
 }) {
+  const hasError = Boolean(props.error);
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span>{props.label}</span>
       <input
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
+        onBlur={props.onBlur}
         disabled={props.disabled}
-        className="rounded border border-zinc-300 px-3 py-2 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900"
+        aria-invalid={hasError || undefined}
+        className={`rounded border px-3 py-2 disabled:opacity-50 dark:bg-zinc-900 ${
+          hasError
+            ? "border-red-500 dark:border-red-500"
+            : "border-zinc-300 dark:border-zinc-700"
+        }`}
       />
+      {hasError ? <span className="text-xs text-red-600">{props.error}</span> : null}
     </label>
   );
 }
