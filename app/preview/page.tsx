@@ -6,6 +6,13 @@ import { ResumeProviderShell } from "./_shell";
 import { ResumePreview } from "./_components/ResumePreview";
 import { steps } from "@/app/build/_components/steps";
 
+function describeError(status: number): string {
+  if (status === 400) return "Some answers need fixing — go back and check your entries.";
+  if (status === 422) return "We couldn't build a clean resume from that. Try a different nudge or tweak your answers.";
+  if (status === 502) return "The AI is having a moment. Try again in a few seconds.";
+  return "Something went wrong. Please try again.";
+}
+
 function PreviewInner() {
   const router = useRouter();
   const { formData, jobContext, resumeJson, setResumeJson, setDelivered } = useResume();
@@ -28,7 +35,7 @@ function PreviewInner() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ formData, jobContext, nudge: nudge || undefined }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(describeError(res.status));
       const json = await res.json();
       setResumeJson(json);
       setNudge("");
@@ -51,7 +58,14 @@ function PreviewInner() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => router.push(`/build?step=${steps[0].id}`)}
+            onClick={() => {
+              const qs = new URLSearchParams();
+              if (jobContext.title) qs.set("title", jobContext.title);
+              if (jobContext.keywords.length > 0) qs.set("keywords", jobContext.keywords.join(","));
+              if (jobContext.jobId) qs.set("jobId", jobContext.jobId);
+              qs.set("step", steps[0].id);
+              router.push(`/build?${qs.toString()}`);
+            }}
             className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700"
           >
             Edit answers

@@ -1,8 +1,15 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useResume } from "@/lib/resumeContext";
 import { steps, findStep } from "./steps";
+
+function describeError(status: number): string {
+  if (status === 400) return "Some answers need fixing — go back and check your entries.";
+  if (status === 422) return "We couldn't build a clean resume from that. Try a different nudge or tweak your answers.";
+  if (status === 502) return "The AI is having a moment. Try again in a few seconds.";
+  return "Something went wrong. Please try again.";
+}
 
 export function FormShell({ currentId }: { currentId: string }) {
   const router = useRouter();
@@ -11,10 +18,10 @@ export function FormShell({ currentId }: { currentId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   const here = useMemo(() => findStep(currentId), [currentId]);
-  if (!here) {
-    if (typeof window !== "undefined") router.replace(`/build?step=${steps[0].id}`);
-    return null;
-  }
+  useEffect(() => {
+    if (!here) router.replace(`/build?step=${steps[0].id}`);
+  }, [here, router]);
+  if (!here) return null;
 
   const { step, index } = here;
   const isLast = index === steps.length - 1;
@@ -40,7 +47,7 @@ export function FormShell({ currentId }: { currentId: string }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ formData, jobContext }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(describeError(res.status));
       const json = await res.json();
       setResumeJson(json);
       router.push("/preview");

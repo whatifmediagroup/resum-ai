@@ -40,7 +40,13 @@ export function ResumeProvider({
   const jobId = initialJobContext.jobId;
   const [state, setState] = useState<Session>(() => ({
     jobContext: initialJobContext,
-    formData: emptyFormData,
+    formData: {
+      ...emptyFormData,
+      target: {
+        ...emptyFormData.target,
+        title: initialJobContext.title ?? "",
+      },
+    },
     resumeJson: null,
     delivered: false,
   }));
