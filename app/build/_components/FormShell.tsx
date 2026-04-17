@@ -86,7 +86,7 @@ export function FormShell({ currentId }: { currentId: string }) {
       if (!res.ok) throw new Error(describeError(res.status));
       const json = await res.json();
       setResumeJson(json);
-      router.push("/preview");
+      router.push(`/preview${window.location.search}`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
