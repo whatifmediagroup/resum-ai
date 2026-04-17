@@ -2,6 +2,7 @@
 import { useResume } from "@/lib/resumeContext";
 import type { FormData } from "@/lib/schema";
 import type { StepProps, StepErrors } from "./index";
+import { MonthPicker } from "../MonthPicker";
 
 type Job = FormData["priorJobs"][number];
 
@@ -75,21 +76,15 @@ export function PriorJobs({ errors, touched, markTouched }: StepProps) {
               }}
               onBlur={() => markTouched(fieldKey(idx, "title"))}
             />
-            <Input
-              label="Start"
-              value={j.start}
-              error={fieldError(idx, "start")}
-              onChange={(v) => {
-                replace(idx, { start: v });
-                markTouched(fieldKey(idx, "start"));
-              }}
-              onBlur={() => markTouched(fieldKey(idx, "start"))}
-            />
-            <Input
-              label="End"
-              value={j.end ?? ""}
-              onChange={(v) => replace(idx, { end: v || undefined })}
-            />
+            <label className="flex flex-col gap-1 text-sm">
+              <span>Start</span>
+              <MonthPicker value={j.start} onChange={(v) => { replace(idx, { start: v }); markTouched(fieldKey(idx, "start")); }} />
+              {fieldError(idx, "start") ? <span className="text-xs text-red-600">{fieldError(idx, "start")}</span> : null}
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span>End</span>
+              <MonthPicker value={j.end ?? ""} onChange={(v) => replace(idx, { end: v || undefined })} />
+            </label>
           </div>
           <label className="mt-3 flex flex-col gap-1 text-sm">
             <span>Description</span>

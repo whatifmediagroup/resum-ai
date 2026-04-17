@@ -2,6 +2,7 @@
 import { useResume } from "@/lib/resumeContext";
 import type { FormData } from "@/lib/schema";
 import type { StepProps, StepErrors } from "./index";
+import { MonthPicker } from "../MonthPicker";
 
 type Edu = FormData["education"][number];
 
@@ -75,16 +76,14 @@ export function Education({ errors, touched, markTouched }: StepProps) {
               }}
               onBlur={() => markTouched(fieldKey(idx, "credential"))}
             />
-            <Input
-              label="Start"
-              value={e.start ?? ""}
-              onChange={(v) => replace(idx, { start: v || undefined })}
-            />
-            <Input
-              label="End"
-              value={e.end ?? ""}
-              onChange={(v) => replace(idx, { end: v || undefined })}
-            />
+            <label className="flex flex-col gap-1 text-sm">
+              <span>Start</span>
+              <MonthPicker value={e.start ?? ""} onChange={(v) => replace(idx, { start: v || undefined })} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span>End</span>
+              <MonthPicker value={e.end ?? ""} onChange={(v) => replace(idx, { end: v || undefined })} />
+            </label>
           </div>
         </div>
       ))}

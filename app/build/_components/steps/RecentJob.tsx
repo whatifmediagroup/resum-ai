@@ -2,6 +2,7 @@
 import { useResume } from "@/lib/resumeContext";
 import type { FormData } from "@/lib/schema";
 import type { StepProps, StepErrors } from "./index";
+import { MonthPicker } from "../MonthPicker";
 
 export function isRecentJobEmpty(j: FormData["recentJob"]): boolean {
   return !j.company && !j.title && !j.start && !j.description && !j.end;
@@ -42,27 +43,16 @@ export function RecentJob({ errors, touched, markTouched }: StepProps) {
         onBlur={() => mark("title")}
       />
       <div className="grid grid-cols-2 gap-4">
-        <Field
-          label="Start (YYYY-MM)"
-          value={j.start}
-          error={fieldError("start")}
-          onChange={(v) => {
-            set({ start: v });
-            mark("start");
-          }}
-          onBlur={() => mark("start")}
-        />
-        <Field
-          label="End (YYYY-MM)"
-          value={j.end ?? ""}
-          error={fieldError("end")}
-          onChange={(v) => {
-            set({ end: v || undefined });
-            mark("end");
-          }}
-          onBlur={() => mark("end")}
-          disabled={j.current}
-        />
+        <label className="flex flex-col gap-1 text-sm">
+          <span>Start</span>
+          <MonthPicker value={j.start} onChange={(v) => { set({ start: v }); mark("start"); }} />
+          {fieldError("start") ? <span className="text-xs text-red-600">{fieldError("start")}</span> : null}
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span>End</span>
+          <MonthPicker value={j.end ?? ""} onChange={(v) => { set({ end: v || undefined }); mark("end"); }} disabled={j.current} />
+          {fieldError("end") ? <span className="text-xs text-red-600">{fieldError("end")}</span> : null}
+        </label>
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input
