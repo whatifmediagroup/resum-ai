@@ -117,7 +117,7 @@ export function ResumeDocument({
                     {e.credential} — {e.institution}
                   </Text>
                 </View>
-                <Text style={styles.dates}>{e.dates}</Text>
+                {e.dates ? <Text style={styles.dates}>{e.dates}</Text> : null}
               </View>
             ))}
           </View>

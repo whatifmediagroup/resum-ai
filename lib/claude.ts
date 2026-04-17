@@ -37,7 +37,7 @@ Emit the resume by calling the \`emit_resume\` tool. The tool schema is the sour
   - Reorder bullets by relevance to the target job (most relevant first).
   - Amplify the candidate's own descriptions; never fabricate experience, employers, titles, or dates.
   - Use past tense for all bullets; recentJob with current=true may use present tense.
-- **Education:** include institution + credential + dates. Omit GPA. Order most-recent first.
+- **Education:** include institution + credential; include dates only if provided (omit the dates field entirely when absent — never write "n/a" or placeholders). Omit GPA. Order most-recent first.
 - **Skills:** prioritize skills that appear in the job description. Return a MAXIMUM of 15 skills, ordered by relevance (most relevant first). Drop low-signal skills rather than truncating arbitrarily.
 
 ## Page Length & Prioritization
@@ -122,7 +122,7 @@ function resumeJsonSchemaAsJsonSchema(): MinimalInputSchema {
             credential: { type: "string" },
             dates: { type: "string" },
           },
-          required: ["institution", "credential", "dates"],
+          required: ["institution", "credential"],
         },
       },
       skills: {

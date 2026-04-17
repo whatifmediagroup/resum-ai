@@ -88,7 +88,7 @@ export const ResumeJsonSchema = z.object({
     z.object({
       institution: z.string().min(1),
       credential: z.string().min(1),
-      dates: z.string().min(1),
+      dates: z.string().min(1).optional(),
     })
   ),
   skills: z.array(z.string().min(1)).min(1),

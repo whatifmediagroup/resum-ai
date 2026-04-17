@@ -27,7 +27,7 @@ REQUIRED FIELD HANDLING — every required field MUST be populated with a non-em
 - header.fullName: extract the candidate's name; if truly absent, use "Unknown".
 - header.contact.phone, header.contact.email, header.contact.location: if a value is not in the resume, use the literal string "n/a". Email must look like an email; if there is no real email use "unknown@example.com".
 - experience: include at least one entry. Every entry needs company, title, dates, and at least one bullet. If something is missing, write "n/a". If the resume contains no work history at all, emit a single entry { company: "n/a", title: "n/a", dates: "n/a", bullets: ["No prior experience listed."] }.
-- education: include at least one entry with institution, credential, and dates. Use "n/a" for missing parts. If no education is listed, emit { institution: "n/a", credential: "n/a", dates: "n/a" }.
+- education: include at least one entry with institution and credential. Dates are OPTIONAL — include the dates field only when the resume text contains real dates for that entry; omit the dates key entirely when absent (never emit "n/a" or other placeholders for dates). Use "n/a" only for missing institution or credential. If no education is listed at all, emit [{ institution: "n/a", credential: "n/a" }].
 - skills: include at least one skill string; if none are present, infer one or two from the experience text or use ["n/a"]. Return a MAXIMUM of 15 skills, ordered by relevance to the target job (most relevant first). If the resume lists more than 15, keep the 15 most relevant and drop the rest.
 
 LINKS — header.links keys (linkedIn, portfolio, github) are OPTIONAL:
@@ -128,16 +128,19 @@ export function sanitizeProofreadOutput(raw: unknown): unknown {
   const education = Array.isArray(out.education) ? out.education : [];
   const cleanedEducation = education.map((e) => {
     const item = (e as AnyRecord) ?? {};
-    return {
+    const dates =
+      typeof item.dates === "string" ? item.dates.trim() : "";
+    const entry: AnyRecord = {
       institution: asNonEmptyString(item.institution, "n/a"),
       credential: asNonEmptyString(item.credential, "n/a"),
-      dates: asNonEmptyString(item.dates, "n/a"),
     };
+    if (dates && dates.toLowerCase() !== "n/a") entry.dates = dates;
+    return entry;
   });
   out.education =
     cleanedEducation.length > 0
       ? cleanedEducation
-      : [{ institution: "n/a", credential: "n/a", dates: "n/a" }];
+      : [{ institution: "n/a", credential: "n/a" }];
 
   const skills = asStringArray(out.skills);
   const nonEmpty = skills.length > 0 ? skills : ["n/a"];

@@ -86,6 +86,28 @@ describe("sanitizeProofreadOutput", () => {
     expect(result.success).toBe(true);
   });
 
+  it("omits education dates when missing or 'n/a' instead of leaving a placeholder", () => {
+    const cleaned = sanitizeProofreadOutput({
+      header: {
+        fullName: "Ada",
+        contact: { phone: "x", email: "a@b.co", location: "L" },
+        links: {},
+      },
+      summary: "s",
+      experience: [{ company: "C", title: "T", dates: "2024", bullets: ["b"] }],
+      education: [
+        { institution: "NJIT", credential: "B.S." },
+        { institution: "MIT", credential: "M.S.", dates: "n/a" },
+        { institution: "UCLA", credential: "PhD", dates: "2018 – 2022" },
+      ],
+      skills: ["go"],
+    }) as { education: Array<{ dates?: string }> };
+
+    expect(cleaned.education[0].dates).toBeUndefined();
+    expect(cleaned.education[1].dates).toBeUndefined();
+    expect(cleaned.education[2].dates).toBe("2018 – 2022");
+  });
+
   it("normalizes individual experience entries with missing fields", () => {
     const cleaned = sanitizeProofreadOutput({
       header: {

@@ -32,22 +32,36 @@ function fixture(jobs = 3, bulletsPerJob = 4): ResumeJson {
 }
 
 describe("generateCandidates", () => {
-  it("iterates all font sizes with full experience first, then trims", () => {
+  it("exhausts all font sizes at max experience before dropping a job", () => {
     const data = fixture(3, 4);
     const candidates = generateCandidates(data);
-    expect(candidates[0]).toEqual({ fontSize: FONT_SIZES[0], experienceCount: 3, bulletTrimFromLast: 0 });
-    expect(candidates[1]).toEqual({ fontSize: FONT_SIZES[0], experienceCount: 2, bulletTrimFromLast: 0 });
-    expect(candidates[2]).toEqual({ fontSize: FONT_SIZES[0], experienceCount: 1, bulletTrimFromLast: 0 });
-    expect(candidates[3].fontSize).toBe(FONT_SIZES[1]);
+    for (let i = 0; i < FONT_SIZES.length; i++) {
+      expect(candidates[i]).toEqual({
+        fontSize: FONT_SIZES[i],
+        experienceCount: 3,
+        bulletTrimFromLast: 0,
+      });
+    }
+    const firstTwoJobCandidate = candidates.find((c) => c.experienceCount === 2);
+    const firstTwoJobIndex = candidates.indexOf(firstTwoJobCandidate!);
+    expect(firstTwoJobIndex).toBeGreaterThanOrEqual(FONT_SIZES.length);
   });
 
-  it("emits bullet-trim fallbacks at smallest font after exhausting experience trims", () => {
-    const data = fixture(2, 5);
+  it("trims bullets on the oldest kept job at smallest font before dropping a job", () => {
+    const data = fixture(3, 4);
     const candidates = generateCandidates(data);
-    const trims = candidates.filter((c) => c.bulletTrimFromLast > 0);
-    expect(trims.length).toBeGreaterThan(0);
-    expect(trims.every((c) => c.fontSize === FONT_SIZES[FONT_SIZES.length - 1])).toBe(true);
-    expect(trims.every((c) => c.experienceCount === 1)).toBe(true);
+    const smallestFont = FONT_SIZES[FONT_SIZES.length - 1];
+    const trimsAtMaxJobs = candidates.filter(
+      (c) => c.experienceCount === 3 && c.bulletTrimFromLast > 0
+    );
+    expect(trimsAtMaxJobs.length).toBeGreaterThan(0);
+    expect(trimsAtMaxJobs.every((c) => c.fontSize === smallestFont)).toBe(true);
+    const firstTwoJob = candidates.findIndex((c) => c.experienceCount === 2);
+    const lastThreeJobTrim = candidates
+      .map((c, i) => ({ c, i }))
+      .filter(({ c }) => c.experienceCount === 3 && c.bulletTrimFromLast > 0)
+      .pop()!;
+    expect(lastThreeJobTrim.i).toBeLessThan(firstTwoJob);
   });
 });
 
@@ -122,8 +136,8 @@ describe("fitResume", () => {
 
     expect(result.fits).toBe(true);
     expect(result.attempts).toBe(3);
-    expect(result.config.experience).toHaveLength(1);
-    expect(result.config.fontSize).toBe(FONT_SIZES[0]);
+    expect(result.config.experience).toHaveLength(3);
+    expect(result.config.fontSize).toBe(FONT_SIZES[2]);
   });
 
   it("returns fits=false with the last blob if nothing passes", async () => {

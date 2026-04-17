@@ -17,18 +17,15 @@ type Candidate = {
 export function generateCandidates(data: ResumeJson): Candidate[] {
   const out: Candidate[] = [];
   const maxJobs = Math.max(1, data.experience.length);
-  for (const fontSize of FONT_SIZES) {
-    for (let n = maxJobs; n >= 1; n--) {
+  const smallestFont = FONT_SIZES[FONT_SIZES.length - 1];
+  for (let n = maxJobs; n >= 1; n--) {
+    for (const fontSize of FONT_SIZES) {
       out.push({ fontSize, experienceCount: n, bulletTrimFromLast: 0 });
     }
-  }
-  const smallestJobBullets = data.experience[0]?.bullets.length ?? 0;
-  for (let trim = 1; trim < smallestJobBullets; trim++) {
-    out.push({
-      fontSize: FONT_SIZES[FONT_SIZES.length - 1],
-      experienceCount: 1,
-      bulletTrimFromLast: trim,
-    });
+    const oldestKeptBullets = data.experience[n - 1]?.bullets.length ?? 0;
+    for (let trim = 1; trim < oldestKeptBullets; trim++) {
+      out.push({ fontSize: smallestFont, experienceCount: n, bulletTrimFromLast: trim });
+    }
   }
   return out;
 }
@@ -61,47 +58,23 @@ export function detectOverlap(items: PdfItem[], minOverlapPt = 2): boolean {
   return false;
 }
 
-async function loadPdfjs() {
-  const pdfjs = await import("pdfjs-dist");
-  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-    pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-  }
-  return pdfjs;
-}
-
 async function inspectPdf(blob: Blob): Promise<{ pageCount: number; overlap: boolean }> {
-  const pdfjs = await loadPdfjs();
+  const { extractTextItems } = await import("unpdf");
   const bytes = new Uint8Array(await blob.arrayBuffer());
-  const pdf = await pdfjs.getDocument({ data: bytes }).promise;
-  try {
-    const pageCount = pdf.numPages;
-    let overlap = false;
-    for (let i = 1; i <= pageCount; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const items: PdfItem[] = content.items
-        .map((raw) => {
-          const it = raw as { transform?: number[]; width?: number; height?: number; str?: string };
-          if (!it.transform || typeof it.str !== "string") return null;
-          return {
-            x: it.transform[4],
-            y: it.transform[5],
-            width: it.width ?? 0,
-            height: it.height ?? 0,
-            str: it.str,
-          };
-        })
-        .filter((v): v is PdfItem => v !== null);
-      if (detectOverlap(items)) {
-        overlap = true;
-        break;
-      }
+  const { totalPages, items: pages } = await extractTextItems(bytes);
+  for (const pageItems of pages) {
+    const items: PdfItem[] = pageItems.map((it) => ({
+      x: it.x,
+      y: it.y,
+      width: it.width,
+      height: it.height,
+      str: it.str,
+    }));
+    if (detectOverlap(items)) {
+      return { pageCount: totalPages, overlap: true };
     }
-    return { pageCount, overlap };
-  } finally {
-    await pdf.cleanup();
-    await pdf.destroy();
   }
+  return { pageCount: totalPages, overlap: false };
 }
 
 type Renderer = (data: ResumeJson, config: ResumeRenderConfig) => Promise<Blob>;

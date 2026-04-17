@@ -28,23 +28,13 @@ export async function POST(req: Request): Promise<Response> {
   const data = new Uint8Array(arrayBuffer);
 
   try {
-    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    const pdf = await pdfjs.getDocument({ data, useSystemFonts: true, isEvalSupported: false }).promise;
-    let full = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const pageText = content.items
-        .map((item) => ("str" in item && typeof item.str === "string" ? item.str : ""))
-        .filter(Boolean)
-        .join(" ");
-      full += pageText + "\n\n";
-    }
-    const text = full.trim();
-    if (text.length === 0) {
+    const { extractText } = await import("unpdf");
+    const { text } = await extractText(data, { mergePages: true });
+    const trimmed = text.trim();
+    if (trimmed.length === 0) {
       return NextResponse.json({ error: "no-text", message: "This PDF appears to be scanned or image-only." }, { status: 422 });
     }
-    return NextResponse.json({ text }, { status: 200 });
+    return NextResponse.json({ text: trimmed }, { status: 200 });
   } catch (err) {
     console.error("PDF extraction failed:", err);
     const message = err instanceof Error ? err.message : "unknown";
