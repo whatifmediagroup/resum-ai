@@ -146,7 +146,10 @@ export function UploadView() {
       </div>
 
       <div className="motion-fade-up motion-delay-150 space-y-6">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div
+          className="motion-fade-up rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          style={{ animationDelay: "250ms" }}
+        >
           <label className="flex cursor-pointer flex-col items-center gap-3 py-6">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
               <UploadIcon className="h-8 w-8" />
@@ -169,9 +172,17 @@ export function UploadView() {
           </label>
         </div>
 
-        <div className="text-center text-sm text-zinc-500 dark:text-zinc-500">or</div>
+        <div
+          className="motion-fade-up text-center text-sm text-zinc-500 dark:text-zinc-500"
+          style={{ animationDelay: "350ms" }}
+        >
+          or
+        </div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div
+          className="motion-fade-up rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          style={{ animationDelay: "450ms" }}
+        >
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
             <FileTextIcon className="h-4 w-4 text-indigo-500" />
             {extractedText ? "Extracted content (editable)" : "Paste your resume text"}
@@ -189,13 +200,19 @@ export function UploadView() {
         </div>
 
         {error ? (
-          <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+          <div
+            className="motion-fade-up flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+            style={{ animationDelay: "500ms" }}
+          >
             <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3 sm:flex-row">
+        <div
+          className="motion-fade-up flex flex-col gap-3 sm:flex-row"
+          style={{ animationDelay: "550ms" }}
+        >
           <button
             type="button"
             onClick={handleProofread}
@@ -213,7 +230,10 @@ export function UploadView() {
           </Link>
         </div>
 
-        <div className="text-center text-sm">
+        <div
+          className="motion-fade-up text-center text-sm"
+          style={{ animationDelay: "650ms" }}
+        >
           <Link
             href="/"
             className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
