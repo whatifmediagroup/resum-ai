@@ -12,6 +12,7 @@ import { useResume } from "@/lib/resumeContext";
 import { writeSession, readSession } from "@/lib/storage";
 import { emptyFormData } from "@/lib/schema";
 import { steps } from "@/app/build/_components/steps";
+import { KoalaMascot } from "@/app/_components/KoalaMascot";
 
 async function extractPdfText(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
@@ -133,6 +134,13 @@ export function UploadView() {
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-12 sm:px-6">
       <div className="motion-fade-up mb-8 text-center">
+        <div className="mb-5 flex justify-center">
+          <KoalaMascot
+            speech="Let me see what you've got!"
+            size={110}
+            delay={0}
+          />
+        </div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
           Upload your resume
         </h1>
