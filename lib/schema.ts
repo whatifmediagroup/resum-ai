@@ -65,11 +65,13 @@ export const ResumeJsonSchema = z.object({
       email: z.email(),
       location: z.string().min(1),
     }),
-    links: z.object({
-      linkedIn: z.string().url().optional(),
-      portfolio: z.string().url().optional(),
-      github: z.string().url().optional(),
-    }),
+    links: z
+      .object({
+        linkedIn: z.string().url().optional(),
+        portfolio: z.string().url().optional(),
+        github: z.string().url().optional(),
+      })
+      .default({}),
   }),
   summary: z.string().min(1),
   experience: z

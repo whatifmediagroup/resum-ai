@@ -185,6 +185,23 @@ export function capSkills(resume: ResumeJson): ResumeJson {
   return { ...resume, skills: resume.skills.slice(0, MAX_SKILLS) };
 }
 
+function stripEmptyOptionalUrls(input: unknown): unknown {
+  if (!input || typeof input !== "object") return input;
+  const obj = input as Record<string, unknown>;
+  const header = obj.header as Record<string, unknown> | undefined;
+  if (header && typeof header === "object") {
+    const links = header.links as Record<string, unknown> | undefined;
+    if (links && typeof links === "object") {
+      const cleaned: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(links)) {
+        if (typeof v === "string" && v.trim().length > 0) cleaned[k] = v.trim();
+      }
+      header.links = cleaned;
+    }
+  }
+  return obj;
+}
+
 export async function generateResume(
   input: GenerateInput,
   client: AnthropicLike = defaultClient()
@@ -208,6 +225,7 @@ export async function generateResume(
   try {
     response = await tryOnce(buildMessages(input));
   } catch (err) {
+    console.error("[generateResume] upstream error:", err);
     throw new ResumeGenerationError("upstream", (err as Error).message);
   }
 
@@ -215,11 +233,14 @@ export async function generateResume(
     (b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === tool.name
   );
   if (!toolBlock) {
+    console.error("[generateResume] no tool_use block. stop_reason:", response.stop_reason, "content:", JSON.stringify(response.content));
     throw new ResumeGenerationError("schema", "Claude did not call emit_resume.");
   }
 
-  const parsed = ResumeJsonSchema.safeParse(toolBlock.input);
+  const firstInput = stripEmptyOptionalUrls(toolBlock.input);
+  const parsed = ResumeJsonSchema.safeParse(firstInput);
   if (parsed.success) return capSkills(parsed.data);
+  console.error("[generateResume] first attempt schema fail:", JSON.stringify(parsed.error.issues), "input:", JSON.stringify(toolBlock.input));
 
   const retryMessages: Anthropic.MessageParam[] = [
     ...buildMessages(input),
@@ -234,6 +255,7 @@ export async function generateResume(
   try {
     retry = await tryOnce(retryMessages);
   } catch (err) {
+    console.error("[generateResume] retry upstream error:", err);
     throw new ResumeGenerationError("upstream", (err as Error).message);
   }
 
@@ -241,11 +263,14 @@ export async function generateResume(
     (b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === tool.name
   );
   if (!retryBlock) {
+    console.error("[generateResume] retry had no tool_use block. stop_reason:", retry.stop_reason, "content:", JSON.stringify(retry.content));
     throw new ResumeGenerationError("schema", "Claude did not call emit_resume on retry.");
   }
 
-  const retryParsed = ResumeJsonSchema.safeParse(retryBlock.input);
+  const retryInput = stripEmptyOptionalUrls(retryBlock.input);
+  const retryParsed = ResumeJsonSchema.safeParse(retryInput);
   if (!retryParsed.success) {
+    console.error("[generateResume] retry schema fail:", JSON.stringify(retryParsed.error.issues), "input:", JSON.stringify(retryBlock.input));
     throw new ResumeGenerationError("schema", retryParsed.error.message);
   }
   return capSkills(retryParsed.data);

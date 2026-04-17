@@ -18,9 +18,9 @@ export function defaultRenderConfig(data: ResumeJson): ResumeRenderConfig {
 function makeStyles(fontSize: number) {
   return StyleSheet.create({
     page: { padding: PADDING, fontSize, fontFamily: "Helvetica", color: "#111", lineHeight: 1.35 },
-    name: { fontSize: 20, fontWeight: 700 },
-    contact: { marginTop: 2, color: "#555", fontSize: 9 },
-    section: { marginTop: 18 },
+    name: { fontSize: 20, fontWeight: 700, marginBottom: 4 },
+    contact: { color: "#555", fontSize: 9 },
+    section: { marginTop: 16 },
     sectionTitle: {
       fontSize: 11,
       fontWeight: 700,
@@ -36,11 +36,11 @@ function makeStyles(fontSize: number) {
     bullet: { marginLeft: 10, marginTop: 3 },
     linkRow: {
       flexDirection: "row",
-      justifyContent: "space-between",
       color: "#0645AD",
       fontSize: 9,
-      marginTop: 2,
+      marginTop: 3,
     },
+    linkSep: { color: "#555", marginHorizontal: 6 },
   });
 }
 
@@ -73,9 +73,10 @@ export function ResumeDocument({
         {linkEntries.length > 0 ? (
           <View style={styles.linkRow}>
             {linkEntries.map((l, i) => (
-              <Link key={i} src={l.href}>
-                {l.label}
-              </Link>
+              <Text key={i}>
+                {i > 0 ? <Text style={styles.linkSep}>•</Text> : null}
+                <Link src={l.href}>{l.label}</Link>
+              </Text>
             ))}
           </View>
         ) : null}
