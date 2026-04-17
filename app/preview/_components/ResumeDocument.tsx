@@ -17,30 +17,50 @@ export function defaultRenderConfig(data: ResumeJson): ResumeRenderConfig {
 
 function makeStyles(fontSize: number) {
   return StyleSheet.create({
-    page: { padding: PADDING, fontSize, fontFamily: "Helvetica", color: "#111", lineHeight: 1.35 },
-    name: { fontSize: 20, fontWeight: 700, marginBottom: 4 },
-    contact: { color: "#555", fontSize: 9 },
-    section: { marginTop: 16 },
+    page: { padding: PADDING, fontSize, fontFamily: "Helvetica", color: "#111", lineHeight: 1.3 },
+    header: {
+      alignItems: "center",
+      paddingBottom: 7,
+      marginBottom: 4,
+      borderBottom: "0.5 solid #D4D4D4",
+    },
+    name: {
+      fontSize: 24,
+      fontWeight: 700,
+      lineHeight: 1.15,
+      marginBottom: 4,
+      textAlign: "center",
+    },
+    contact: {
+      color: "#555",
+      fontSize: 8.5,
+      lineHeight: 1.3,
+      textAlign: "center",
+    },
+    section: { marginTop: 12 },
     sectionTitle: {
-      fontSize: 11,
+      fontSize: 10.5,
       fontWeight: 700,
       textTransform: "uppercase",
-      borderBottom: "1 solid #000",
+      color: "#000",
+      borderBottom: "1 solid #111",
       paddingBottom: 2,
-      marginBottom: 8,
+      marginBottom: 6,
     },
-    jobHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 3 },
+    jobHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
     jobHeaderLeft: { flex: 1, paddingRight: 8 },
-    jobTitle: { fontWeight: 700 },
-    dates: { color: "#555", flexShrink: 0 },
-    bullet: { marginLeft: 10, marginTop: 3 },
+    jobTitle: { fontWeight: 700, fontSize: fontSize + 0.5, color: "#000" },
+    jobCompany: { color: "#444", fontSize: fontSize - 0.5, marginTop: 0, marginBottom: 2 },
+    dates: { color: "#555", flexShrink: 0, fontSize: fontSize - 0.5 },
+    bullet: { marginLeft: 10, marginTop: 2 },
     linkRow: {
       flexDirection: "row",
+      justifyContent: "center",
       color: "#0645AD",
-      fontSize: 9,
-      marginTop: 3,
+      fontSize: 8.5,
+      marginTop: 4,
     },
-    linkSep: { color: "#555", marginHorizontal: 6 },
+    linkSep: { color: "#888", marginHorizontal: 6 },
   });
 }
 
@@ -68,18 +88,20 @@ export function ResumeDocument({
   return (
     <Document>
       <Page size="LETTER" style={styles.page}>
-        <Text style={styles.name}>{data.header.fullName}</Text>
-        <Text style={styles.contact}>{contactLine}</Text>
-        {linkEntries.length > 0 ? (
-          <View style={styles.linkRow}>
-            {linkEntries.map((l, i) => (
-              <Text key={i}>
-                {i > 0 ? <Text style={styles.linkSep}>•</Text> : null}
-                <Link src={l.href}>{l.label}</Link>
-              </Text>
-            ))}
-          </View>
-        ) : null}
+        <View style={styles.header}>
+          <Text style={styles.name}>{data.header.fullName}</Text>
+          <Text style={styles.contact}>{contactLine}</Text>
+          {linkEntries.length > 0 ? (
+            <View style={styles.linkRow}>
+              {linkEntries.map((l, i) => (
+                <Text key={i}>
+                  {i > 0 ? <Text style={styles.linkSep}>•</Text> : null}
+                  <Link src={l.href}>{l.label}</Link>
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Summary</Text>
@@ -89,15 +111,14 @@ export function ResumeDocument({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Experience</Text>
           {experience.map((job, i) => (
-            <View key={i} style={{ marginBottom: 12 }}>
+            <View key={i} style={{ marginBottom: 8 }}>
               <View style={styles.jobHeader}>
                 <View style={styles.jobHeaderLeft}>
-                  <Text style={styles.jobTitle}>
-                    {job.title} — {job.company}
-                  </Text>
+                  <Text style={styles.jobTitle}>{job.title}</Text>
                 </View>
                 <Text style={styles.dates}>{job.dates}</Text>
               </View>
+              <Text style={styles.jobCompany}>{job.company}</Text>
               {job.bullets.map((b, bi) => (
                 <Text key={bi} style={styles.bullet}>
                   • {b}
@@ -111,13 +132,14 @@ export function ResumeDocument({
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Education</Text>
             {data.education.map((e, i) => (
-              <View key={i} style={styles.jobHeader}>
-                <View style={styles.jobHeaderLeft}>
-                  <Text style={styles.jobTitle}>
-                    {e.credential} — {e.institution}
-                  </Text>
+              <View key={i} style={{ marginBottom: 4 }}>
+                <View style={styles.jobHeader}>
+                  <View style={styles.jobHeaderLeft}>
+                    <Text style={styles.jobTitle}>{e.credential}</Text>
+                  </View>
+                  {e.dates ? <Text style={styles.dates}>{e.dates}</Text> : null}
                 </View>
-                {e.dates ? <Text style={styles.dates}>{e.dates}</Text> : null}
+                <Text style={styles.jobCompany}>{e.institution}</Text>
               </View>
             ))}
           </View>

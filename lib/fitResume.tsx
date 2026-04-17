@@ -49,7 +49,7 @@ export function detectOverlap(items: PdfItem[], minOverlapPt = 2): boolean {
     for (let j = i + 1; j < items.length; j++) {
       const b = items[j];
       if (!b.str.trim()) continue;
-      const yTolerance = Math.min(a.height, b.height) * 0.7 || 6;
+      const yTolerance = Math.min(Math.min(a.height, b.height) * 0.5, 3) || 3;
       if (Math.abs(a.y - b.y) > yTolerance) continue;
       const xOverlap = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
       if (xOverlap > minOverlapPt) return true;
