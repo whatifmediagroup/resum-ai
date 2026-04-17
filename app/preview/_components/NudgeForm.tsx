@@ -17,8 +17,11 @@ export function NudgeForm({ onRegenerate, onMarkDelivered, regenerating, error }
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded border border-zinc-200 p-4 dark:border-zinc-800">
-      <label className="text-sm">
+    <div className="motion-fade-up flex flex-col gap-2 rounded border border-zinc-200 p-4 dark:border-zinc-800">
+      <label
+        className="motion-fade-up text-sm"
+        style={{ animationDelay: "100ms" }}
+      >
         <span className="mb-1 block">Regenerate with a nudge (optional)</span>
         <input
           value={nudge}
@@ -28,7 +31,10 @@ export function NudgeForm({ onRegenerate, onMarkDelivered, regenerating, error }
           disabled={regenerating}
         />
       </label>
-      <div className="flex items-center gap-2">
+      <div
+        className="motion-fade-up flex items-center gap-2"
+        style={{ animationDelay: "200ms" }}
+      >
         <button
           type="button"
           onClick={submit}
@@ -45,7 +51,14 @@ export function NudgeForm({ onRegenerate, onMarkDelivered, regenerating, error }
           I've downloaded it
         </button>
       </div>
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {error ? (
+        <p
+          className="motion-fade-up text-xs text-red-600"
+          style={{ animationDelay: "300ms" }}
+        >
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

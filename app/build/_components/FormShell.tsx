@@ -132,43 +132,65 @@ export function FormShell({ currentId }: { currentId: string }) {
         }}
       />
       <div key={step.id} className={`flex flex-col gap-6 ${animationClass(direction)}`}>
-        <h2 className="text-xl font-semibold">{step.label}</h2>
-        <step.Component errors={errors} touched={currentTouched} markTouched={markTouched} />
-      </div>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={goPrev}
-          className="rounded border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700"
+        <h2
+          className="motion-fade-up text-xl font-semibold"
+          style={{ animationDelay: "0ms" }}
         >
-          Back
-        </button>
-        <div className="flex items-center gap-3">
-          {skippable && !isLast ? (
-            <button
-              type="button"
-              onClick={skip}
-              className="rounded border border-zinc-300 px-4 py-2 text-sm text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
-            >
-              Skip
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={submitting}
-            className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
-          >
-            {isLast ? (submitting ? "Generating…" : "Generate resume") : "Next"}
-          </button>
+          {step.label}
+        </h2>
+        <div className="motion-fade-up" style={{ animationDelay: "100ms" }}>
+          <step.Component errors={errors} touched={currentTouched} markTouched={markTouched} />
         </div>
       </div>
-      {resumeJson ? (
-        <p className="text-xs text-zinc-500">
-          A resume already exists for this session — clicking Generate will replace it.
-        </p>
-      ) : null}
+      <div key={`foot-${step.id}`} className="flex flex-col gap-3">
+        {error ? (
+          <p
+            className="motion-fade-up text-sm text-red-600"
+            style={{ animationDelay: "200ms" }}
+          >
+            {error}
+          </p>
+        ) : null}
+        <div
+          className="motion-fade-up flex items-center justify-between gap-3"
+          style={{ animationDelay: "250ms" }}
+        >
+          <button
+            type="button"
+            onClick={goPrev}
+            className="rounded border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700"
+          >
+            Back
+          </button>
+          <div className="flex items-center gap-3">
+            {skippable && !isLast ? (
+              <button
+                type="button"
+                onClick={skip}
+                className="rounded border border-zinc-300 px-4 py-2 text-sm text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
+              >
+                Skip
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={submitting}
+              className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
+            >
+              {isLast ? (submitting ? "Generating…" : "Generate resume") : "Next"}
+            </button>
+          </div>
+        </div>
+        {resumeJson ? (
+          <p
+            className="motion-fade-up text-xs text-zinc-500"
+            style={{ animationDelay: "350ms" }}
+          >
+            A resume already exists for this session — clicking Generate will replace it.
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
