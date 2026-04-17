@@ -40,7 +40,7 @@ export function applyCandidate(data: ResumeJson, c: Candidate): ResumeRenderConf
   return { fontSize: c.fontSize, experience };
 }
 
-type PdfItem = { x: number; y: number; width: number; height: number; str: string };
+export type PdfItem = { x: number; y: number; width: number; height: number; str: string };
 
 export function detectOverlap(items: PdfItem[], minOverlapPt = 2): boolean {
   for (let i = 0; i < items.length; i++) {
@@ -59,22 +59,18 @@ export function detectOverlap(items: PdfItem[], minOverlapPt = 2): boolean {
 }
 
 async function inspectPdf(blob: Blob): Promise<{ pageCount: number; overlap: boolean }> {
-  const { extractTextItems } = await import("unpdf");
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  const { totalPages, items: pages } = await extractTextItems(bytes);
-  for (const pageItems of pages) {
-    const items: PdfItem[] = pageItems.map((it) => ({
-      x: it.x,
-      y: it.y,
-      width: it.width,
-      height: it.height,
-      str: it.str,
-    }));
-    if (detectOverlap(items)) {
-      return { pageCount: totalPages, overlap: true };
-    }
+  const res = await fetch("/api/inspect-pdf", {
+    method: "POST",
+    headers: { "content-type": "application/pdf" },
+    body: blob,
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(
+      typeof detail?.message === "string" ? detail.message : `inspect failed (${res.status})`
+    );
   }
-  return { pageCount: totalPages, overlap: false };
+  return (await res.json()) as { pageCount: number; overlap: boolean };
 }
 
 type Renderer = (data: ResumeJson, config: ResumeRenderConfig) => Promise<Blob>;
