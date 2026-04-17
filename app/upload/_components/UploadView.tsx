@@ -9,13 +9,15 @@ import {
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useResume } from "@/lib/resumeContext";
+import { writeSession, readSession } from "@/lib/storage";
+import { emptyFormData } from "@/lib/schema";
 import { steps } from "@/app/build/_components/steps";
 
 async function extractPdfText(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   const pdfjsLib = await import("pdfjs-dist");
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
   }
   const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
   let full = "";
@@ -42,7 +44,7 @@ function describeError(status: number): string {
 
 export function UploadView() {
   const router = useRouter();
-  const { jobContext, setResumeJson } = useResume();
+  const { jobContext, setResumeJson, setSourceResumeText } = useResume();
   const [extractedText, setExtractedText] = useState("");
   const [fileName, setFileName] = useState("");
   const [parsing, setParsing] = useState(false);
@@ -89,8 +91,27 @@ export function UploadView() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ resumeText: text, jobContext }),
       });
-      if (!res.ok) throw new Error(describeError(res.status));
+      if (!res.ok) {
+        let detail: string | undefined;
+        try {
+          const body = (await res.json()) as { message?: string };
+          detail = body?.message;
+        } catch {
+          /* ignore */
+        }
+        const base = describeError(res.status);
+        throw new Error(detail ? `${base} (${detail})` : base);
+      }
       const json = await res.json();
+      const existing = readSession(jobContext.jobId);
+      writeSession(jobContext.jobId, {
+        jobContext,
+        formData: existing?.formData ?? emptyFormData,
+        resumeJson: json,
+        delivered: false,
+        sourceResumeText: text,
+      });
+      setSourceResumeText(text);
       setResumeJson(json);
       router.push("/preview");
     } catch (err) {
