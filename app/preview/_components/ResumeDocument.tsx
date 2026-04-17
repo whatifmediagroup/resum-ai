@@ -34,7 +34,13 @@ function makeStyles(fontSize: number) {
     jobTitle: { fontWeight: 700 },
     dates: { color: "#555", flexShrink: 0 },
     bullet: { marginLeft: 10, marginTop: 3 },
-    linkRow: { color: "#0645AD", fontSize: 9, marginTop: 2 },
+    linkRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      color: "#0645AD",
+      fontSize: 9,
+      marginTop: 2,
+    },
   });
 }
 
@@ -69,7 +75,6 @@ export function ResumeDocument({
             {linkEntries.map((l, i) => (
               <Link key={i} src={l.href}>
                 {l.label}
-                {i < linkEntries.length - 1 ? "  •  " : ""}
               </Link>
             ))}
           </View>

@@ -70,18 +70,23 @@ export default async function Landing({
           {jc.title ? (
             <>
               Land your next{" "}
-              <span className="text-indigo-600 dark:text-indigo-400">{jc.title}</span> role
+              <span className="text-indigo-600 dark:text-indigo-400">
+                {jc.title}
+              </span>{" "}
+              role
             </>
           ) : (
             <>
               Build a resume that{" "}
-              <span className="text-indigo-600 dark:text-indigo-400">gets interviews</span>
+              <span className="text-indigo-600 dark:text-indigo-400">
+                gets interviews
+              </span>
             </>
           )}
         </h1>
         <p className="mx-auto mt-3 max-w-xl text-balance text-lg text-zinc-600 dark:text-zinc-400">
-          Our AI tailors your resume to match the job you want. No templates, no guessing —
-          just a polished, professional resume in minutes.
+          Our AI tailors your resume to match the job you want. No templates, no
+          guessing — just a polished, professional resume in minutes.
         </p>
         {jc.keywords.length > 0 ? (
           <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-500">
@@ -99,41 +104,35 @@ export default async function Landing({
         </h2>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {paths.map(({ id, Icon, title, desc, iconClass, iconBgClass, route }, idx) => (
-            <div
-              key={id}
-              className="motion-fade-up h-full"
-              style={{ animationDelay: `${250 + idx * 100}ms` }}
-            >
-              <Link href={hrefFor(route)} className="block h-full">
-                <div className="group relative flex h-full flex-col items-center rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-700">
-                  <div
-                    className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl ${iconBgClass} ${iconClass}`}
-                  >
-                    <Icon className="h-6 w-6" />
+          {paths.map(
+            ({ id, Icon, title, desc, iconClass, iconBgClass, route }, idx) => (
+              <div
+                key={id}
+                className="motion-fade-up h-full"
+                style={{ animationDelay: `${250 + idx * 100}ms` }}
+              >
+                <Link href={hrefFor(route)} className="block h-full">
+                  <div className="group relative flex h-full flex-col items-center rounded-2xl border border-zinc-200 bg-white p-6 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-700">
+                    <div
+                      className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl ${iconBgClass} ${iconClass}`}
+                    >
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <h3 className="mb-1 font-semibold text-zinc-900 dark:text-zinc-100">
+                      {title}
+                    </h3>
+                    <p className="flex-1 text-sm text-zinc-600 dark:text-zinc-400">
+                      {desc}
+                    </p>
+                    <div className="mt-4 flex items-center gap-1 text-sm font-medium text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100 dark:text-indigo-400">
+                      Get started <ArrowRightIcon className="h-3.5 w-3.5" />
+                    </div>
                   </div>
-                  <h3 className="mb-1 font-semibold text-zinc-900 dark:text-zinc-100">
-                    {title}
-                  </h3>
-                  <p className="flex-1 text-sm text-zinc-600 dark:text-zinc-400">{desc}</p>
-                  <div className="mt-4 flex items-center gap-1 text-sm font-medium text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100 dark:text-indigo-400">
-                    Get started <ArrowRightIcon className="h-3.5 w-3.5" />
-                  </div>
-                </div>
-              </Link>
-            </div>
-          ))}
+                </Link>
+              </div>
+            ),
+          )}
         </div>
-
-        <p className="mt-10 text-center text-sm text-zinc-500 dark:text-zinc-500">
-          Already know what you want?{" "}
-          <Link
-            href={buildHref}
-            className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-          >
-            Start building →
-          </Link>
-        </p>
       </div>
     </main>
   );
