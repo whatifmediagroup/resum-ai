@@ -22,7 +22,7 @@ describe("claude helpers", () => {
     const msgs = buildMessages({
       jobContext: { title: "SWE", keywords: ["go"], jobId: "1" },
       formData: {
-        identity: { fullName: "Ada", phone: "x", email: "a@b.c", location: "L" },
+        identity: { fullName: "Ada", phone: "x", email: "a@b.co", location: "L" },
         target: { title: "SWE", pitch: "p" },
         recentJob: { company: "C", title: "T", start: "2024", current: true, description: "d" },
         priorJobs: [],
@@ -42,7 +42,7 @@ describe("claude helpers", () => {
     const msgs = buildMessages({
       jobContext: { keywords: [] },
       formData: {
-        identity: { fullName: "A", phone: "x", email: "a@b.c", location: "L" },
+        identity: { fullName: "A", phone: "x", email: "a@b.co", location: "L" },
         target: { title: "t", pitch: "p" },
         recentJob: { company: "C", title: "T", start: "2024", current: true, description: "d" },
         priorJobs: [],

@@ -10,7 +10,7 @@ import { POST } from "@/app/api/generate/route";
 import type { ResumeJson, FormData } from "@/lib/schema";
 
 const validFormData: FormData = {
-  identity: { fullName: "Ada", phone: "555", email: "a@b.c", location: "L" },
+  identity: { fullName: "Ada", phone: "555", email: "a@b.co", location: "L" },
   target: { title: "SWE", pitch: "p" },
   recentJob: { company: "C", title: "T", start: "2024", current: true, description: "d" },
   priorJobs: [],
@@ -22,7 +22,7 @@ const validFormData: FormData = {
 const validResume: ResumeJson = {
   header: {
     fullName: "Ada",
-    contact: { phone: "555", email: "a@b.c", location: "L" },
+    contact: { phone: "555", email: "a@b.co", location: "L" },
     links: {},
   },
   summary: "s",
