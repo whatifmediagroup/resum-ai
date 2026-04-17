@@ -3,6 +3,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useResume } from "@/lib/resumeContext";
 import { steps, findStep } from "./steps";
+import { KoalaMascot } from "@/app/_components/KoalaMascot";
+
+const STEP_SPEECH: Record<string, string> = {
+  identity: "Nice to meet ya! Let's get the basics down.",
+  target: "What role are you koalified for?",
+  "recent-job": "Tell me about your current gig.",
+  "prior-jobs": "Any earlier jobs worth bragging about?",
+  education: "Where'd you earn your koalifications?",
+  skills: "Time to show off — what are your superpowers?",
+};
 
 type StepDirection = "forward" | "back" | "initial";
 
@@ -130,6 +140,11 @@ export function FormShell({ currentId }: { currentId: string }) {
           if (i === index) return;
           if (i < index || visited[steps[i].id]) goTo(i);
         }}
+      />
+      <KoalaMascot
+        variant="helper"
+        size={60}
+        speech={STEP_SPEECH[step.id]}
       />
       <div key={step.id} className={`flex flex-col gap-6 ${animationClass(direction)}`}>
         <h2

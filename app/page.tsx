@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ComponentType, SVGProps } from "react";
 import { parseJobContext } from "@/lib/jobContext";
 import { steps } from "@/app/build/_components/steps";
+import { KoalaMascot } from "@/app/_components/KoalaMascot";
 
 type GatePath = "update" | "build";
 
@@ -62,6 +63,13 @@ export default async function Landing({
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6 sm:py-20">
       <div className="motion-fade-up mb-10 text-center">
+        <div className="mb-6 flex justify-center">
+          <KoalaMascot
+            speech="Let's get you koalified!"
+            size={140}
+            delay={0}
+          />
+        </div>
         <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-indigo-100 px-3 py-1 text-sm font-medium text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
           <SparklesIcon className="h-4 w-4" />
           AI-Powered Resume Builder
