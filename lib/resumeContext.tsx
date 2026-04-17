@@ -50,6 +50,7 @@ export function ResumeProvider({
     resumeJson: null,
     delivered: false,
   }));
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const saved = readSession(jobId);
@@ -60,12 +61,14 @@ export function ResumeProvider({
         formData: { ...prev.formData, ...saved.formData },
       }));
     }
+    setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     writeSession(jobId, state);
-  }, [jobId, state]);
+  }, [jobId, state, hydrated]);
 
   const setJobContext = useCallback(
     (jc: JobContext) => setState((s) => ({ ...s, jobContext: jc })),
@@ -99,6 +102,7 @@ export function ResumeProvider({
     [state, setJobContext, updateFormData, setResumeJson, setDelivered]
   );
 
+  if (!hydrated) return null;
   return <ResumeCtx.Provider value={value}>{children}</ResumeCtx.Provider>;
 }
 
