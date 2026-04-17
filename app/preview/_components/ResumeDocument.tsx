@@ -2,50 +2,17 @@
 import { Document, Page, Text, View, StyleSheet, Link } from "@react-pdf/renderer";
 import type { ResumeJson } from "@/lib/schema";
 
-const PADDING = 36;
-const USABLE_PT = 792 - 2 * PADDING;
-const FONT_SIZES = [11.5, 11, 10.5, 10] as const;
+export const PADDING = 36;
+export const USABLE_PT = 792 - 2 * PADDING;
+export const FONT_SIZES = [11.5, 11, 10.5, 10] as const;
 
-function estimateHeightPt(
-  data: ResumeJson,
-  experience: ResumeJson["experience"],
-  fontSize: number
-): number {
-  const lineH = fontSize * 1.35;
-  const sectionOverhead = 18 + 11 + 2 + 8; // marginTop + titleFontSize + paddingBottom + marginBottom
-
-  let h = fontSize * 2 + 2 + lineH; // name + contact
-  if (Object.values(data.header.links).some(Boolean)) h += lineH + 2;
-
-  h += sectionOverhead + Math.ceil(data.summary.length / 85) * lineH;
-
-  h += sectionOverhead;
-  for (const job of experience) {
-    h += lineH + 3 + job.bullets.length * (lineH + 3) + 12;
-  }
-
-  if (data.education.length > 0) {
-    h += sectionOverhead + data.education.length * (lineH + 4);
-  }
-
-  h += sectionOverhead + lineH;
-
-  return h;
-}
-
-function buildRenderData(data: ResumeJson): {
+export type ResumeRenderConfig = {
   fontSize: number;
   experience: ResumeJson["experience"];
-} {
-  for (const fontSize of FONT_SIZES) {
-    for (let n = data.experience.length; n >= 1; n--) {
-      const experience = data.experience.slice(0, n);
-      if (estimateHeightPt(data, experience, fontSize) <= USABLE_PT) {
-        return { fontSize, experience };
-      }
-    }
-  }
-  return { fontSize: 10, experience: data.experience.slice(0, 1) };
+};
+
+export function defaultRenderConfig(data: ResumeJson): ResumeRenderConfig {
+  return { fontSize: FONT_SIZES[0], experience: data.experience };
 }
 
 function makeStyles(fontSize: number) {
@@ -63,15 +30,22 @@ function makeStyles(fontSize: number) {
       marginBottom: 8,
     },
     jobHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 3 },
+    jobHeaderLeft: { flex: 1, paddingRight: 8 },
     jobTitle: { fontWeight: 700 },
-    dates: { color: "#555" },
+    dates: { color: "#555", flexShrink: 0 },
     bullet: { marginLeft: 10, marginTop: 3 },
     linkRow: { color: "#0645AD", fontSize: 9, marginTop: 2 },
   });
 }
 
-export function ResumeDocument({ data }: { data: ResumeJson }) {
-  const { fontSize, experience } = buildRenderData(data);
+export function ResumeDocument({
+  data,
+  config,
+}: {
+  data: ResumeJson;
+  config?: ResumeRenderConfig;
+}) {
+  const { fontSize, experience } = config ?? defaultRenderConfig(data);
   const styles = makeStyles(fontSize);
 
   const contactLine = [data.header.contact.phone, data.header.contact.email, data.header.contact.location]
@@ -111,9 +85,11 @@ export function ResumeDocument({ data }: { data: ResumeJson }) {
           {experience.map((job, i) => (
             <View key={i} style={{ marginBottom: 12 }}>
               <View style={styles.jobHeader}>
-                <Text style={styles.jobTitle}>
-                  {job.title} — {job.company}
-                </Text>
+                <View style={styles.jobHeaderLeft}>
+                  <Text style={styles.jobTitle}>
+                    {job.title} — {job.company}
+                  </Text>
+                </View>
                 <Text style={styles.dates}>{job.dates}</Text>
               </View>
               {job.bullets.map((b, bi) => (
@@ -130,9 +106,11 @@ export function ResumeDocument({ data }: { data: ResumeJson }) {
             <Text style={styles.sectionTitle}>Education</Text>
             {data.education.map((e, i) => (
               <View key={i} style={styles.jobHeader}>
-                <Text style={styles.jobTitle}>
-                  {e.credential} — {e.institution}
-                </Text>
+                <View style={styles.jobHeaderLeft}>
+                  <Text style={styles.jobTitle}>
+                    {e.credential} — {e.institution}
+                  </Text>
+                </View>
                 <Text style={styles.dates}>{e.dates}</Text>
               </View>
             ))}

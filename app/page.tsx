@@ -3,7 +3,7 @@ import type { ComponentType, SVGProps } from "react";
 import { parseJobContext } from "@/lib/jobContext";
 import { steps } from "@/app/build/_components/steps";
 
-type GatePath = "ready" | "update" | "build";
+type GatePath = "update" | "build";
 
 type PathOption = {
   id: GatePath;
@@ -12,19 +12,10 @@ type PathOption = {
   desc: string;
   iconClass: string;
   iconBgClass: string;
-  route: "/jobs" | "/upload" | "/build";
+  route: "/upload" | "/build";
 };
 
 const paths: PathOption[] = [
-  {
-    id: "ready",
-    Icon: FileCheckIcon,
-    title: "Yes — ready to go",
-    desc: "Great! We'll send you straight to matching jobs.",
-    iconClass: "text-emerald-600 dark:text-emerald-400",
-    iconBgClass: "bg-emerald-50 dark:bg-emerald-950/40",
-    route: "/jobs",
-  },
   {
     id: "update",
     Icon: FilePenIcon,
@@ -59,7 +50,7 @@ export default async function Landing({
   if (jc.keywords.length > 0) baseQs.set("keywords", jc.keywords.join(","));
   if (jc.jobId) baseQs.set("jobId", jc.jobId);
 
-  function hrefFor(route: "/jobs" | "/upload" | "/build"): string {
+  function hrefFor(route: "/upload" | "/build"): string {
     const qs = new URLSearchParams(baseQs);
     if (route === "/build") qs.set("step", firstStep);
     const tail = qs.toString();
@@ -107,7 +98,7 @@ export default async function Landing({
           Do you have a resume?
         </h2>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           {paths.map(({ id, Icon, title, desc, iconClass, iconBgClass, route }, idx) => (
             <div
               key={id}
@@ -163,25 +154,6 @@ function SparklesIcon(props: SVGProps<SVGSVGElement>) {
       <path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z" />
       <path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14z" />
       <path d="M5 14l.6 1.4L7 16l-1.4.6L5 18l-.6-1.4L3 16l1.4-.6L5 14z" />
-    </svg>
-  );
-}
-
-function FileCheckIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      {...props}
-    >
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <polyline points="9 14 11 16 15 12" />
     </svg>
   );
 }
