@@ -26,6 +26,8 @@ type Ctx = {
   setResumeJson: (r: ResumeJson | null) => void;
   delivered: boolean;
   setDelivered: (d: boolean) => void;
+  sourceResumeText: string | null;
+  setSourceResumeText: (t: string | null) => void;
 };
 
 const ResumeCtx = createContext<Ctx | null>(null);
@@ -49,6 +51,7 @@ export function ResumeProvider({
     },
     resumeJson: null,
     delivered: false,
+    sourceResumeText: null,
   }));
   const [hydrated, setHydrated] = useState(false);
 
@@ -87,6 +90,10 @@ export function ResumeProvider({
     (d: boolean) => setState((s) => ({ ...s, delivered: d })),
     []
   );
+  const setSourceResumeText = useCallback(
+    (t: string | null) => setState((s) => ({ ...s, sourceResumeText: t })),
+    []
+  );
 
   const value = useMemo<Ctx>(
     () => ({
@@ -98,8 +105,10 @@ export function ResumeProvider({
       setResumeJson,
       delivered: state.delivered,
       setDelivered,
+      sourceResumeText: state.sourceResumeText ?? null,
+      setSourceResumeText,
     }),
-    [state, setJobContext, updateFormData, setResumeJson, setDelivered]
+    [state, setJobContext, updateFormData, setResumeJson, setDelivered, setSourceResumeText]
   );
 
   if (!hydrated) return null;

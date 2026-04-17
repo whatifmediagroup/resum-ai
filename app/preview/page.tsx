@@ -1,9 +1,10 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useResume } from "@/lib/resumeContext";
 import { ResumeProviderShell } from "./_shell";
 import { ResumePreview } from "./_components/ResumePreview";
+import { NudgeForm } from "./_components/NudgeForm";
 import { steps } from "@/app/build/_components/steps";
 
 function describeError(status: number): string {
@@ -15,41 +16,90 @@ function describeError(status: number): string {
 
 function PreviewInner() {
   const router = useRouter();
-  const { formData, jobContext, resumeJson, setResumeJson, setDelivered } = useResume();
+  const {
+    formData,
+    jobContext,
+    resumeJson,
+    setResumeJson,
+    setDelivered,
+    sourceResumeText,
+  } = useResume();
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [nudge, setNudge] = useState("");
 
   useEffect(() => {
     if (!resumeJson) router.replace(`/build?step=${steps[0].id}`);
   }, [resumeJson, router]);
 
-  if (!resumeJson) return null;
+  const regenerate = useCallback(
+    async (nudge: string | undefined) => {
+      setRegenerating(true);
+      setError(null);
+      try {
+        const fromUpload = !!sourceResumeText;
+        const formIsEmpty =
+          !formData.identity.fullName.trim() ||
+          !formData.identity.email.trim() ||
+          formData.education.length === 0 ||
+          formData.skills.length === 0;
 
-  const regenerate = async () => {
-    setRegenerating(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ formData, jobContext, nudge: nudge || undefined }),
-      });
-      if (!res.ok) throw new Error(describeError(res.status));
-      const json = await res.json();
-      setResumeJson(json);
-      setNudge("");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setRegenerating(false);
-    }
-  };
+        if (!fromUpload && formIsEmpty) {
+          throw new Error(
+            "We don't have your build answers anymore. Use Edit answers to fill them in, or Re-upload your existing resume."
+          );
+        }
 
-  const markDelivered = () => {
+        const endpoint = fromUpload ? "/api/proofread" : "/api/generate";
+        const body = fromUpload
+          ? { resumeText: sourceResumeText, jobContext, nudge }
+          : { formData, jobContext, nudge };
+
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          let detail: string | undefined;
+          try {
+            const b = (await res.json()) as { message?: string };
+            detail = b?.message;
+          } catch {
+            /* ignore */
+          }
+          const base = describeError(res.status);
+          throw new Error(detail ? `${base} (${detail})` : base);
+        }
+        const json = await res.json();
+        setResumeJson(json);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setRegenerating(false);
+      }
+    },
+    [formData, jobContext, setResumeJson, sourceResumeText]
+  );
+
+  const markDelivered = useCallback(() => {
     setDelivered(true);
     router.push("/done");
-  };
+  }, [router, setDelivered]);
+
+  if (!resumeJson) return null;
+
+  const fromUpload = !!sourceResumeText;
+  const editLabel = fromUpload ? "Re-upload" : "Edit answers";
+  const editHref = (() => {
+    const qs = new URLSearchParams();
+    if (jobContext.title) qs.set("title", jobContext.title);
+    if (jobContext.keywords.length > 0) qs.set("keywords", jobContext.keywords.join(","));
+    if (jobContext.jobId) qs.set("jobId", jobContext.jobId);
+    if (!fromUpload) qs.set("step", steps[0].id);
+    const tail = qs.toString();
+    const base = fromUpload ? "/upload" : "/build";
+    return tail ? `${base}?${tail}` : base;
+  })();
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
@@ -58,50 +108,20 @@ function PreviewInner() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => {
-              const qs = new URLSearchParams();
-              if (jobContext.title) qs.set("title", jobContext.title);
-              if (jobContext.keywords.length > 0) qs.set("keywords", jobContext.keywords.join(","));
-              if (jobContext.jobId) qs.set("jobId", jobContext.jobId);
-              qs.set("step", steps[0].id);
-              router.push(`/build?${qs.toString()}`);
-            }}
+            onClick={() => router.push(editHref)}
             className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700"
           >
-            Edit answers
+            {editLabel}
           </button>
         </div>
       </div>
       <ResumePreview data={resumeJson} />
-      <div className="flex flex-col gap-2 rounded border border-zinc-200 p-4 dark:border-zinc-800">
-        <label className="text-sm">
-          <span className="block mb-1">Regenerate with a nudge (optional)</span>
-          <input
-            value={nudge}
-            onChange={(e) => setNudge(e.target.value)}
-            placeholder='e.g. "make it more technical" or "shorten each bullet"'
-            className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-          />
-        </label>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={regenerate}
-            disabled={regenerating}
-            className="rounded border border-zinc-300 px-3 py-2 text-sm disabled:opacity-50 dark:border-zinc-700"
-          >
-            {regenerating ? "Regenerating…" : "Regenerate"}
-          </button>
-          <button
-            type="button"
-            onClick={markDelivered}
-            className="rounded bg-black px-3 py-2 text-sm text-white dark:bg-white dark:text-black"
-          >
-            I've downloaded it
-          </button>
-        </div>
-        {error ? <p className="text-xs text-red-600">{error}</p> : null}
-      </div>
+      <NudgeForm
+        onRegenerate={regenerate}
+        onMarkDelivered={markDelivered}
+        regenerating={regenerating}
+        error={error}
+      />
     </main>
   );
 }

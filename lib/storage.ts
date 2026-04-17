@@ -5,6 +5,7 @@ export type Session = {
   formData: FormData;
   resumeJson: ResumeJson | null;
   delivered: boolean;
+  sourceResumeText?: string | null;
 };
 
 export function keyFor(jobId: string | undefined): string {

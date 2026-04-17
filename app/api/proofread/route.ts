@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 const BodySchema = z.object({
   resumeText: z.string().min(20, "Need at least 20 characters of resume text."),
   jobContext: JobContextSchema,
+  nudge: z.string().optional(),
 });
 
 export async function POST(req: Request): Promise<Response> {
